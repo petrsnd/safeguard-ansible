@@ -1,13 +1,11 @@
-﻿# (c) 2023, Brad Nicholes <brad.nicholes@oneidentity.com>
+# (c) 2023, Brad Nicholes <brad.nicholes@oneidentity.com>
 # (c) 2023, One Identity LLC.
 
-from __future__ import (absolute_import, division, print_function)
-from os.path import dirname
-import sys
+from ansible.errors import AnsibleError
+from ansible.module_utils._text import to_native
 from ansible.plugins.lookup import LookupBase
-from ansible.module_utils._text import to_bytes, to_native, to_text
-from ansible.errors import AnsibleError, AnsibleAssertionError
-__metaclass__ = type
+
+from pysafeguard import A2AContext, A2AType
 
 DOCUMENTATION = """
     name: safeguardcredentials
@@ -27,16 +25,17 @@ DOCUMENTATION = """
         description:
           - Safeguard for Privileged Passwords appliance connection information
           - The a2aconnection must contain the following properties
-            - spp_appliance - IP address or host name of the Safeguard for Prvileged Passwords appliance
+            - spp_appliance - IP address or host name of the Safeguard for Privileged Passwords appliance
             - spp_certificate_file - Full path to the A2A client authentication certificate
             - spp_certificate_key - Full path to the A2A client authentication private key
-            - spp_tls_cert(optional) - Full path to the TLS publis certificate that is associated with the SPP appliance
+            - spp_tls_cert(optional) - Full path to the TLS public certificate that is associated with the SPP appliance
             - spp_credential_type(optional) - Credential type to retrieve. Must be 'password' or 'privatekey'
         required: True
     notes:
       - Please see the configuration for the Safeguard for Privileged Passwords Application to Application registration.
       - Each credential that is retrieved from Safeguard for Privileged Passwords will have an identifying API key.
-      - The safeguardcredentials lookup plugin requires OneIdentity PySafeguard module.  Please see https://github.com/OneIdentity/PySafeguard
+      - The safeguardcredentials lookup plugin requires OneIdentity PySafeguard module (>=8.0).
+      - See https://github.com/OneIdentity/PySafeguard
 """
 
 EXAMPLES = """
@@ -46,7 +45,7 @@ EXAMPLES = """
       spp_appliance: 192.168.0.1
       spp_certificate_file: /etc/ansible/certs/CN=a2ausercert.pem
       spp_certificate_key: /etc/ansible/certs/CN=a2ausercert.key
-      spp_tls_cert_key: /etc/ansible/certs/spptlscert.pem
+      spp_tls_cert: /etc/ansible/certs/spptlscert.pem
       spp_credential_type: password
   name: retrieve a credential
     ansible.builtin.set_fact:
@@ -62,33 +61,18 @@ _raw:
   elements: str
 """
 
-from ansible.errors import AnsibleError, AnsibleAssertionError
-from ansible.module_utils._text import to_bytes, to_native, to_text
-from ansible.plugins.lookup import LookupBase
 
-import sys
-from os.path import dirname
-sys.path.append(dirname(__file__))
+def _resolve_verify(tls_cert):
+    """Map the user-facing spp_tls_cert value to a PySafeguard verify parameter.
 
-from pysafeguard import *
-
-def _get_spp_credential(appliance, api_key, certificate_file, certificate_key, tls_cert, a2atype):
-    """Retrieve the credential that corresponds to the API key
-      :arg appliance: SPP appliance to connection with
-      :arg api_key: Api key that coresponds to a credential
-      :arg certificate_file: Client authentication certificate
-      :arg certificate_key: Client authentication key
-      :arg tls_cert: tls certificate or False
-      :arg a2atype: A2a credential type
-      :returns: a text string containing the credential
+    :arg tls_cert: A file path (str), True, False, or None
+    :returns: True, False, or a CA bundle path string
     """
-
-    try:
-        password = PySafeguardConnection.a2a_get_credential(appliance, api_key, certificate_file, certificate_key, tls_cert, a2aType=a2atype)
-    except Exception as e:
-        raise AnsibleError('Failed to retrieve the credential: %s' % to_native(e))
-
-    return password
+    if isinstance(tls_cert, str) and tls_cert:
+        return tls_cert
+    if tls_cert is True:
+        return True
+    return False
 
 
 class LookupModule(LookupBase):
@@ -104,13 +88,13 @@ class LookupModule(LookupBase):
         cert = a2aconnection.get('spp_certificate_file', None)
         key = a2aconnection.get('spp_certificate_key', None)
         tls_cert = a2aconnection.get('spp_tls_cert', False)
-        credential_type = a2aconnection.get('spp_credential_type', A2ATypes.PASSWORD)
-        if credential_type.lower() == A2ATypes.PASSWORD:
-          credential_type = A2ATypes.PASSWORD
-        elif credential_type.lower() == A2ATypes.PRIVATEKEY:
-          credential_type = A2ATypes.PRIVATEKEY
+        credential_type = a2aconnection.get('spp_credential_type', A2AType.PASSWORD)
+        if credential_type.lower() == A2AType.PASSWORD:
+            credential_type = A2AType.PASSWORD
+        elif credential_type.lower() == A2AType.PRIVATEKEY:
+            credential_type = A2AType.PRIVATEKEY
         else:
-          raise AnsibleError('Invalid credential type: ' + credential_type)
+            raise AnsibleError('Invalid credential type: ' + credential_type)
 
         if not appliance:
             raise AnsibleError('Missing appliance IP address or host name.')
@@ -119,8 +103,19 @@ class LookupModule(LookupBase):
         if not key:
             raise AnsibleError('Missing client authentication key path.')
 
-        for term in terms:
-            pw = _get_spp_credential(appliance, term, cert, key, tls_cert, credential_type)
-            ret.append(pw)
+        verify = _resolve_verify(tls_cert)
+
+        try:
+            with A2AContext(appliance, cert, key, verify=verify) as a2a:
+                for term in terms:
+                    if credential_type == A2AType.PRIVATEKEY:
+                        credential = a2a.retrieve_private_key(term)
+                    else:
+                        credential = a2a.retrieve_password(term)
+                    ret.append(credential.value)
+        except AnsibleError:
+            raise
+        except Exception as e:
+            raise AnsibleError('Failed to retrieve the credential: %s' % to_native(e))
 
         return ret

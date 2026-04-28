@@ -25,7 +25,7 @@ steps:
 
 - task: UsePythonVersion@0
   inputs:
-    versionSpec: 3.9
+    versionSpec: 3.12
 
 - script: |
     python3 -m pip install --upgrade pip wheel twine
@@ -40,7 +40,7 @@ steps:
     targetType: 'inline'
     script: |
       $file = "setup.py"
-      (Get-Content $file).replace('0.9.0', "$(version)") | Set-Content $file
+      (Get-Content $file).replace('1.0.0', "$(version)") | Set-Content $file
     workingDirectory: '$(workingDir)'
     failOnStderr: true
 

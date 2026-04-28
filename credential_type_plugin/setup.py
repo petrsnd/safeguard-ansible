@@ -2,8 +2,7 @@
 
 from setuptools import setup
 
-requirements = ['pysafeguard']  # add Python dependencies here
-# e.g., requirements = ["PyYAML"]
+requirements = ['pysafeguard>=8,<9']
 
 from pathlib import Path
 this_directory = Path(__file__).parent
@@ -11,7 +10,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='safeguardcredentialtype',
-    version='0.9.0',
+    version='1.0.0',
     author='One Identity, Llc.',
     author_email='brad.nicholes@oneidentity.com',
     description='One Identity Safeguard Credential Type plugin for Ansible',
@@ -23,6 +22,7 @@ setup(
     packages=['safeguardcredentialtype'],
     include_package_data=True,
     zip_safe=False,
+    python_requires='>=3.10',
     setup_requires=[],
     install_requires=requirements,
     entry_points = {
