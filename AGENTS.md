@@ -32,7 +32,7 @@ safeguard-ansible/
 │
 └── credential_type_plugin/              # AWX/AAP credential type plugin
     ├── azure-pipelines.yml              # CI/CD: build & publish to PyPI
-    ├── setup.py                         # PyPI packaging (safeguardcredentialtype)
+    ├── pyproject.toml                   # PyPI packaging (safeguardcredentialtype)
     ├── README.md                        # Installation & configuration docs
     ├── Images/                          # Screenshots for docs
     ├── tests/                           # Manual test steps & playbooks
@@ -160,6 +160,6 @@ releases.** The CI pipeline stamps the version from the build ID.
 
 ## Versioning
 
-The version placeholder in `galaxy.yml` and `setup.py` is `1.0.0`. The Azure
+The version placeholder in `galaxy.yml` and `pyproject.toml` is `1.0.0`. The Azure
 Pipeline replaces this at build time with the actual release version
 (`1.2.<BuildId>`).

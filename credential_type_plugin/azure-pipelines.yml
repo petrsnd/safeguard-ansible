@@ -35,11 +35,11 @@ steps:
   displayName: 'Install build software'
 
 - task: PowerShell@2
-  displayName: Update the version in setup.py
+  displayName: Update the version in pyproject.toml
   inputs:
     targetType: 'inline'
     script: |
-      $file = "setup.py"
+      $file = "pyproject.toml"
       (Get-Content $file).replace('1.0.0', "$(version)") | Set-Content $file
     workingDirectory: '$(workingDir)'
     failOnStderr: true
