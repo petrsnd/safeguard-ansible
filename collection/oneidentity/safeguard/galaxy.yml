@@ -17,5 +17,6 @@ repository: "https://github.com/OneIdentity/safeguard-ansible"
 documentation: "https://github.com/OneIdentity/safeguard-ansible"
 homepage: "https://github.com/OneIdentity/safeguard-ansible"
 issues: "https://github.com/OneIdentity/safeguard-ansible/issues"
-build_ignore: []
+build_ignore:
+  - tests/
 
