@@ -35,6 +35,6 @@ steps:
 - task: PublishPipelineArtifact@0
   displayName: 'Publish collection artifact'
   inputs:
-    artifactName: 'SafeguardCollection'
+    artifactName: 'SafeguardCollection-$(Build.BuildId)'
     targetPath: '$(Build.ArtifactStagingDirectory)/collection'
   condition: succeededOrFailed()

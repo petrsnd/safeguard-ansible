@@ -39,6 +39,6 @@ steps:
 - task: PublishPipelineArtifact@0
   displayName: 'Publish credential plugin artifact'
   inputs:
-    artifactName: 'SafeguardCredentialType'
+    artifactName: 'SafeguardCredentialType-$(Build.BuildId)'
     targetPath: '$(Build.ArtifactStagingDirectory)/credplugin'
   condition: succeededOrFailed()
