@@ -224,7 +224,14 @@ def _find_existing_request(client, account_id, asset_id, access_request_type):
     :arg access_request_type: The SPP AccessRequestType value (e.g. "Password", "SshKey")
     :returns: The request ID string, or None if no matching request exists
     """
-    resp = client.get(Service.CORE, "AccessRequests")
+    resp = client.get(
+        Service.CORE,
+        "AccessRequests",
+        params={
+            "filter": "AccountId eq %d and AssetId eq %d and AccessRequestType eq '%s'"
+                      % (account_id, asset_id, access_request_type),
+        },
+    )
     if resp.status_code != 200:
         return None
 
@@ -237,10 +244,7 @@ def _find_existing_request(client, account_id, asset_id, access_request_type):
         "SshInitialized",
     )
     for req in resp.json():
-        if (req.get("AccountId") == account_id
-                and req.get("AssetId") == asset_id
-                and req.get("AccessRequestType") == access_request_type
-                and not req.get("WasExpired", False)
+        if (not req.get("WasExpired", False)
                 and req.get("State") in active_states):
             return req["Id"]
 
