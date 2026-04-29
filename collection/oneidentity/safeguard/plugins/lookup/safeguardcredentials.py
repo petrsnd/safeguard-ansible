@@ -46,6 +46,8 @@ DOCUMENTATION = """
 """
 
 EXAMPLES = """
+- name: Retrieve a password credential
+  hosts: localhost
   vars:
     spp_credential_apikey: safyBECB8SW5g0Udk7GRFh6LaQ/KoI0eNOW4JK8Cqeo=
     a2aconnection:
@@ -54,16 +56,22 @@ EXAMPLES = """
       spp_certificate_key: /etc/ansible/certs/CN=a2ausercert.key
       spp_tls_cert: /etc/ansible/certs/spptlscert.pem
       spp_credential_type: password
-  name: retrieve a credential
-    ansible.builtin.set_fact:
-      password: "{{ lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2aconnection) }}"
+  tasks:
+    - name: Retrieve a credential by API key
+      ansible.builtin.set_fact:
+        password: "{{ lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2aconnection) }}"
 
+    - name: Retrieve an SSH private key by API key
+      ansible.builtin.set_fact:
+        sshkey: "{{ lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2aconnection | combine({'spp_credential_type': 'privatekey'})) }}"
 """
 
 RETURN = """
 _raw:
   description:
-    - a credential
+    - One credential string per API key provided.
+    - For password lookups, each element is the plaintext password.
+    - For privatekey lookups, each element is the PEM-formatted SSH private key.
   type: list
   elements: str
 """
@@ -128,6 +136,6 @@ class LookupModule(LookupBase):
         except AnsibleError:
             raise
         except Exception as e:
-            raise AnsibleError('Failed to retrieve the credential: %s' % to_native(e))
+            raise AnsibleError('Failed to retrieve the credential: %s' % to_native(e)) from e
 
         return ret

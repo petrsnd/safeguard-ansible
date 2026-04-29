@@ -117,7 +117,9 @@ EXAMPLES = """
 RETURN = """
 _raw:
   description:
-    - the credential (password string or SSH key)
+    - A single-element list containing the retrieved credential.
+    - For password lookups, the element is the plaintext password.
+    - For privatekey lookups, the element is the PEM-formatted SSH private key.
   type: list
   elements: str
 """
@@ -336,6 +338,6 @@ class LookupModule(LookupBase):
         except AnsibleError:
             raise
         except Exception as e:
-            raise AnsibleError('Failed to retrieve the credential: %s' % to_native(e))
+            raise AnsibleError('Failed to retrieve the credential: %s' % to_native(e)) from e
 
         return ret
