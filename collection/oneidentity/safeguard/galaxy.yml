@@ -1,6 +1,6 @@
 namespace: oneidentity
 name: safeguardcollection
-version: 1.0.0
+version: 2.0.0
 readme: README.md
 authors:
   - "Brad Nicholes <brad.nicholes@oneidentity.com>"

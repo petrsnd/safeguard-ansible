@@ -1,0 +1,44 @@
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.12'
+  displayName: 'Use Python 3.12'
+
+- script: |
+    python3 -m pip install --upgrade pip wheel build twine
+  displayName: 'Install dependencies'
+
+- task: PowerShell@2
+  displayName: 'Set credential plugin version'
+  inputs:
+    targetType: filePath
+    filePath: $(System.DefaultWorkingDirectory)/versionnumber.ps1
+    arguments: >
+      -Component credplugin
+      -BuildId $(Build.BuildId)
+      -TagName $(Build.SourceBranchName)
+      -IsTagBuild $(isTagBuild)
+
+- script: |
+    cd credential_type_plugin
+    python3 -m build
+  displayName: 'Build credential type plugin'
+
+- script: |
+    cd credential_type_plugin
+    twine check dist/*
+  displayName: 'Validate distribution'
+
+- task: CopyFiles@2
+  displayName: 'Copy dist to staging'
+  inputs:
+    sourceFolder: '$(Build.SourcesDirectory)/credential_type_plugin/dist'
+    contents: '*'
+    targetFolder: $(Build.ArtifactStagingDirectory)/credplugin
+
+- task: PublishPipelineArtifact@0
+  displayName: 'Publish credential plugin artifact'
+  inputs:
+    artifactName: 'SafeguardCredentialType'
+    targetPath: '$(Build.ArtifactStagingDirectory)/credplugin'
+  condition: succeededOrFailed()

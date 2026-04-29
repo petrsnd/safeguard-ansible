@@ -13,8 +13,13 @@ safeguard-ansible/
 ├── AGENTS.md
 ├── README.md
 ├── LICENSE
+├── azure-pipelines.yml                  # Unified CI/CD pipeline
+├── versionnumber.ps1                    # Version stamping script (dual-component)
+├── pipeline-templates/                  # Shared pipeline step templates
+│   ├── global-variables.yml             # isTagBuild, isCollectionTag, isCredPluginTag
+│   ├── build-collection-steps.yml       # Collection build steps
+│   └── build-credplugin-steps.yml       # Credential plugin build steps
 ├── collection/                          # Ansible Galaxy collection
-│   ├── azure-pipelines.yml              # CI/CD: build & publish collection
 │   ├── tests/                           # Automated integration test suite
 │   │   ├── pytest.ini                   # Pytest config & markers
 │   │   ├── requirements.txt             # Test dependencies
@@ -57,7 +62,6 @@ safeguard-ansible/
 │               └── safeguardaccessrequest.py # Lookup plugin — Access Request credential retrieval
 │
 └── credential_type_plugin/              # AWX/AAP credential type plugin
-    ├── azure-pipelines.yml              # CI/CD: build & publish to PyPI
     ├── pyproject.toml                   # PyPI packaging (safeguardcredentialtype)
     ├── README.md                        # Installation & configuration docs
     ├── Images/                          # Screenshots for docs
@@ -231,18 +235,56 @@ The `verify` parameter maps from the user-facing `spp_tls_cert` config:
 
 ## CI/CD
 
-Both components use Azure Pipelines (`azure-pipelines.yml`) for building and
-publishing. The pipelines:
+The repository uses a single Azure Pipeline (`azure-pipelines.yml`) at the repo
+root, modeled after PySafeguard's release semantics.
 
-1. Use Python 3.12
-2. Replace the placeholder version in `galaxy.yml` / `pyproject.toml` with the
-   build version
-3. Build the artifact (collection tarball or Python wheel)
-4. Publish to GitHub Releases (all release branches)
-5. Publish to Ansible Galaxy / PyPI (non-prerelease only)
+### Pipeline structure
 
-**Do not change the version in `galaxy.yml` or `pyproject.toml` manually for
-releases.** The CI pipeline stamps the version from the build ID.
+```
+azure-pipelines.yml
+├── PRValidation          # Builds both components, no publishing
+├── BuildCollection       # Builds + publishes collection (skipped on credplugin tags)
+└── BuildCredPlugin       # Builds + publishes credential plugin (skipped on collection tags)
+```
+
+Shared build logic lives in `pipeline-templates/`:
+- `global-variables.yml` — `isTagBuild`, `isCollectionTag`, `isCredPluginTag`
+- `build-collection-steps.yml` — install ansible-core, version stamp, build collection
+- `build-credplugin-steps.yml` — install build tools, version stamp, build wheel
+
+### Version management
+
+`versionnumber.ps1` reads the version from each component's metadata file
+(`galaxy.yml` or `pyproject.toml`) and produces the package version:
+
+- **Tag builds** (e.g. `collection-v2.0.0`): uses the tag as the version →
+  publishes to Galaxy/PyPI as a full release
+- **Dev builds** (merge to main/release-*): appends a dev suffix →
+  `2.0.0-dev.N` for collection (SemVer), `2.0.0.devN` for credential plugin
+  (PEP 440) → GitHub prerelease only
+
+### Release workflow
+
+To release the collection:
+```bash
+git tag collection-v2.0.0
+git push origin collection-v2.0.0
+```
+
+To release the credential type plugin:
+```bash
+git tag credplugin-v2.0.0
+git push origin credplugin-v2.0.0
+```
+
+Dev builds use `dev/` prefix tags (e.g. `dev/collection-v2.0.0-dev.123`) to
+avoid re-triggering the pipeline's tag-based release triggers.
+
+### Service connections
+
+- **GitHub**: `PangaeaBuild-GitHub` (same as PySafeguard)
+- **Galaxy API key**: Azure Key Vault `SafeguardBuildSecrets` → `AnsibleGalaxyApiKey1`
+- **PyPI**: `pypiOneIdentity` via Twine
 
 ## Code conventions
 
@@ -258,6 +300,14 @@ releases.** The CI pipeline stamps the version from the build ID.
 
 ## Versioning
 
-The version placeholder in `galaxy.yml` and `pyproject.toml` is `1.0.0`. The Azure
-Pipeline replaces this at build time with the actual release version
-(`1.2.<BuildId>`).
+Both components use semantic versioning. The version in `galaxy.yml` and
+`pyproject.toml` is the source of truth (currently `2.0.0`). The pipeline
+reads this and either uses it as-is (tag builds) or appends a dev suffix.
+
+Component-prefixed git tags trigger official releases:
+- `collection-v<X.Y.Z>` → Ansible Galaxy
+- `credplugin-v<X.Y.Z>` → PyPI
+
+The version in the metadata files should be bumped when preparing a new
+release. It does not need a placeholder — `versionnumber.ps1` handles
+the dev suffix for non-tag builds automatically.

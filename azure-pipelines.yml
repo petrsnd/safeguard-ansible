@@ -1,0 +1,138 @@
+# Build Safeguard Ansible Collection and Credential Type Plugin
+
+variables:
+  - template: pipeline-templates/global-variables.yml
+
+trigger:
+  branches:
+    include:
+    - main
+    - release-*
+  tags:
+    include:
+    - 'collection-v*'
+    - 'credplugin-v*'
+  paths:
+    exclude:
+    - README.md
+    - AGENTS.md
+
+pr:
+  branches:
+    include:
+    - main
+    - release-*
+  paths:
+    exclude:
+    - README.md
+    - AGENTS.md
+
+jobs:
+# -------------------------------------------------------------------
+# PR Validation — build both components, no publishing
+# -------------------------------------------------------------------
+- job: PRValidation
+  displayName: 'PR Validation'
+  condition: eq(variables['Build.Reason'], 'PullRequest')
+
+  pool:
+    vmImage: ubuntu-latest
+
+  steps:
+  - template: pipeline-templates/build-collection-steps.yml
+  - template: pipeline-templates/build-credplugin-steps.yml
+
+# -------------------------------------------------------------------
+# Build and publish Ansible Galaxy collection
+# -------------------------------------------------------------------
+- job: BuildCollection
+  displayName: 'Build and publish collection'
+  condition: >
+    and(
+      ne(variables['Build.Reason'], 'PullRequest'),
+      not(eq(variables.isCredPluginTag, 'True'))
+    )
+
+  pool:
+    vmImage: ubuntu-latest
+
+  steps:
+  - template: pipeline-templates/build-collection-steps.yml
+
+  # GitHub release — prerelease for dev builds, full release for tag builds
+  - task: GitHubRelease@1
+    displayName: 'Publish collection GitHub release'
+    inputs:
+      gitHubConnection: 'PangaeaBuild-GitHub'
+      repositoryName: 'OneIdentity/safeguard-ansible'
+      action: 'create'
+      target: '$(Build.SourceVersion)'
+      tagSource: 'userSpecifiedTag'
+      tag: '$(ReleaseTag)'
+      title: 'Safeguard Collection $(PackageVersion)'
+      isPreRelease: ${{ not(startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
+      changeLogCompareToRelease: 'lastFullRelease'
+      changeLogType: 'commitBased'
+      addChangeLog: true
+      assets: $(Build.ArtifactStagingDirectory)/collection/*.tar.gz
+
+  # Galaxy publish — only for tag builds (official releases)
+  - task: AzureKeyVault@1
+    displayName: 'Get Ansible Galaxy API key'
+    condition: and(succeeded(), eq(variables.isCollectionTag, 'True'))
+    inputs:
+      azureSubscription: 'OneIdentity.RD.SBox.Safeguard-ServiceConnection'
+      KeyVaultName: 'SafeguardBuildSecrets'
+      SecretsFilter: 'AnsibleGalaxyApiKey1'
+
+  - script: |
+      ansible-galaxy collection publish $(Build.ArtifactStagingDirectory)/collection/oneidentity-safeguardcollection-$(PackageVersion).tar.gz --token $(AnsibleGalaxyApiKey1)
+    displayName: 'Publish collection to Ansible Galaxy'
+    condition: and(succeeded(), eq(variables.isCollectionTag, 'True'))
+
+# -------------------------------------------------------------------
+# Build and publish credential type plugin
+# -------------------------------------------------------------------
+- job: BuildCredPlugin
+  displayName: 'Build and publish credential type plugin'
+  condition: >
+    and(
+      ne(variables['Build.Reason'], 'PullRequest'),
+      not(eq(variables.isCollectionTag, 'True'))
+    )
+
+  pool:
+    vmImage: ubuntu-latest
+
+  steps:
+  - template: pipeline-templates/build-credplugin-steps.yml
+
+  # GitHub release — prerelease for dev builds, full release for tag builds
+  - task: GitHubRelease@1
+    displayName: 'Publish credential plugin GitHub release'
+    inputs:
+      gitHubConnection: 'PangaeaBuild-GitHub'
+      repositoryName: 'OneIdentity/safeguard-ansible'
+      action: 'create'
+      target: '$(Build.SourceVersion)'
+      tagSource: 'userSpecifiedTag'
+      tag: '$(ReleaseTag)'
+      title: 'Safeguard Credential Type $(PackageVersion)'
+      isPreRelease: ${{ not(startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
+      changeLogCompareToRelease: 'lastFullRelease'
+      changeLogType: 'commitBased'
+      addChangeLog: true
+      assets: $(Build.ArtifactStagingDirectory)/credplugin/*
+
+  # PyPI publish — only for tag builds (official releases)
+  - task: TwineAuthenticate@1
+    displayName: 'Twine Authenticate'
+    condition: and(succeeded(), eq(variables.isCredPluginTag, 'True'))
+    inputs:
+      pythonUploadServiceConnection: pypiOneIdentity
+
+  - script: |
+      python3 -m pip install --upgrade twine
+      twine upload --verbose --config-file $(PYPIRC_PATH) $(Build.ArtifactStagingDirectory)/credplugin/*
+    displayName: 'Upload to PyPI'
+    condition: and(succeeded(), eq(variables.isCredPluginTag, 'True'))

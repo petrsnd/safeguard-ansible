@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "safeguardcredentialtype"
-version = "1.0.0"
+version = "2.0.0"
 description = "One Identity Safeguard Credential Type plugin for Ansible"
 readme = { file = "README.md", content-type = "text/markdown" }
 license = "Apache-2.0"

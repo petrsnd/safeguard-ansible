@@ -1,0 +1,40 @@
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.12'
+  displayName: 'Use Python 3.12'
+
+- script: |
+    python3 -m pip install --upgrade pip
+    python3 -m pip install ansible-core antsibull-changelog
+  displayName: 'Install dependencies'
+
+- task: PowerShell@2
+  displayName: 'Set collection version'
+  inputs:
+    targetType: filePath
+    filePath: $(System.DefaultWorkingDirectory)/versionnumber.ps1
+    arguments: >
+      -Component collection
+      -BuildId $(Build.BuildId)
+      -TagName $(Build.SourceBranchName)
+      -IsTagBuild $(isTagBuild)
+
+- script: |
+    cd collection/oneidentity/safeguard
+    ansible-galaxy collection build
+  displayName: 'Build collection'
+
+- task: CopyFiles@2
+  displayName: 'Copy collection tarball to staging'
+  inputs:
+    sourceFolder: '$(Build.SourcesDirectory)/collection/oneidentity/safeguard'
+    contents: '*.tar.gz'
+    targetFolder: $(Build.ArtifactStagingDirectory)/collection
+
+- task: PublishPipelineArtifact@0
+  displayName: 'Publish collection artifact'
+  inputs:
+    artifactName: 'SafeguardCollection'
+    targetPath: '$(Build.ArtifactStagingDirectory)/collection'
+  condition: succeededOrFailed()
