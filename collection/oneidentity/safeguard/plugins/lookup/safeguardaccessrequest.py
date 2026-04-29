@@ -210,11 +210,19 @@ def _find_existing_request(client, account_id, asset_id):
     if resp.status_code != 200:
         return None
 
+    active_states = (
+        "RequestAvailable",
+        "PasswordCheckedOut",
+        "SshKeyCheckedOut",
+        "FileCheckedOut",
+        "RdpInitialized",
+        "SshInitialized",
+    )
     for req in resp.json():
         if (req.get("AccountId") == account_id
                 and req.get("AssetId") == asset_id
                 and not req.get("WasExpired", True)
-                and req.get("State") in ("RequestAvailable", "PasswordCheckedOut")):
+                and req.get("State") in active_states):
             return req["Id"]
 
     return None
@@ -334,6 +342,8 @@ class LookupModule(LookupBase):
                     asset_name, credential_type
                 )
                 credential = _checkout_with_retry(client, request_id, credential_type)
+                if credential_type == "privatekey" and isinstance(credential, dict):
+                    credential = credential.get("PrivateKey", credential)
                 ret.append(credential)
         except AnsibleError:
             raise
