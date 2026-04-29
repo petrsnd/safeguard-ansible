@@ -69,9 +69,14 @@ safeguard-ansible/
     ├── pyproject.toml                   # PyPI packaging (safeguardcredentialtype)
     ├── README.md                        # Installation & configuration docs
     ├── Images/                          # Screenshots for docs
-    ├── tests/                           # Manual test steps & playbooks
-    │   ├── steps.txt
-    │   └── playbook.yaml
+    ├── tests/                           # Automated + manual tests
+    │   ├── pytest.ini                   # Pytest config & markers
+    │   ├── requirements.txt             # Test dependencies
+    │   ├── conftest.py                  # Session fixtures, A2A provisioning, auto-skip
+    │   ├── test_unit.py                 # Unit tests (15 tests, no appliance needed)
+    │   ├── test_integration.py          # Integration tests (4 tests, need SPP_HOST)
+    │   ├── steps.txt                    # Manual AWX deployment test steps
+    │   └── playbook.yaml                # Manual test playbook
     └── safeguardcredentialtype/
         └── __init__.py                  # AWX credential plugin implementation
 ```
@@ -202,6 +207,37 @@ correctness must be validated manually against a test appliance before release.
 
 Follow the step-by-step instructions in `credential_type_plugin/tests/steps.txt`
 for AWX/AAP deployment and verification.
+
+### Automated tests (credential type plugin)
+
+The credential type plugin has both unit tests and integration tests in
+`credential_type_plugin/tests/`.
+
+**Unit tests** (15 tests) — always run, no appliance needed:
+
+```bash
+cd credential_type_plugin
+python3 -m pytest tests/test_unit.py -v
+```
+
+**Integration tests** (4 tests) — require a live SPP appliance:
+
+```bash
+cd credential_type_plugin
+SPP_HOST=<appliance-ip> SPP_ADMIN_PASSWORD=<admin-pw> python3 -m pytest tests/test_integration.py -v
+```
+
+These tests self-provision all needed objects (admin user, asset, account,
+client certificate, A2A registration) using the bootstrap admin account and
+clean up afterward. The bootstrap admin (`Admin` user with the password
+specified by `SPP_ADMIN_PASSWORD`) must exist and have permission to create
+users. This is the same factory-default admin used by the collection tests.
+
+| Variable             | Required | Description |
+|----------------------|----------|-------------|
+| `SPP_HOST`           | Yes      | Appliance IP or hostname |
+| `SPP_ADMIN_PASSWORD` | No       | Bootstrap admin password (default: `Admin123`) |
+| `SPP_CA_FILE`        | No       | TLS CA bundle path (disables TLS verification if unset) |
 
 ## PySafeguard API usage
 
