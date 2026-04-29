@@ -10,7 +10,10 @@ readme = { file = "README.md", content-type = "text/markdown" }
 license = "Apache-2.0"
 keywords = ["ansible", "oneidentity"]
 authors = [
-    { name = "One Identity, Llc.", email = "brad.nicholes@oneidentity.com" }
+    { name = "Dan Peterson", email = "Dan.Peterson@oneidentity.com" }
+]
+maintainers = [
+    { name = "Dan Peterson", email = "Dan.Peterson@oneidentity.com" }
 ]
 requires-python = ">=3.10"
 dependencies = [
