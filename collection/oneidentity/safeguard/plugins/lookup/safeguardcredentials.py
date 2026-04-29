@@ -32,6 +32,7 @@ DOCUMENTATION = """
             - spp_tls_cert(optional) - Full path to the TLS public certificate that is associated with the SPP appliance
             - spp_credential_type(optional) - Credential type to retrieve. Must be 'password' or 'privatekey'
         required: True
+        no_log: True
     notes:
       - Please see the configuration for the Safeguard for Privileged Passwords Application to Application registration.
       - Each credential that is retrieved from Safeguard for Privileged Passwords will have an identifying API key.

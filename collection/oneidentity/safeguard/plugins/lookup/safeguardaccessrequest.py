@@ -44,6 +44,7 @@ DOCUMENTATION = """
         description: Authentication password
         type: str
         required: True
+        no_log: True
       spp_credential_type:
         description: >-
           Type of credential to retrieve.
