@@ -102,6 +102,13 @@ retrieve credentials through the Access Request workflow. Supports password and
 SSH key retrieval. All connection options support environment variable and
 ansible.cfg ini fallbacks.
 
+**Design note — no check-in after checkout**: The plugin intentionally does not
+call `CheckInPassword` / `CheckInSshKey` after retrieving the credential.
+Checking in triggers credential rotation on the appliance, which would change
+the password/key immediately after retrieval — making the returned value useless.
+Instead, access requests are left to expire naturally per the access policy's
+session duration settings.
+
 ### Credential Type Plugin (`credential_type_plugin/`)
 
 A Python package (`safeguardcredentialtype`) that integrates with
@@ -159,6 +166,11 @@ SPP_HOST=<appliance-ip> SPP_ADMIN_PASSWORD=<admin-pw> python3 -m pytest -v
 | `SPP_CA_FILE`        | No       | TLS CA bundle path (uses system CA store if unset) |
 
 All 18 tests skip automatically when `SPP_HOST` is not set.
+
+**CI limitation**: These tests cannot run in CI/CD pipelines because they
+require a live SPP appliance. The pipeline's PR validation stage only builds
+the artifacts (collection tarball and wheel) to verify packaging. Behavioral
+correctness must be validated manually against a test appliance before release.
 
 **What the tests do**:
 

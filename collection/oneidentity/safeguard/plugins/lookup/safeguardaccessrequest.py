@@ -192,7 +192,7 @@ def _find_entitlement(client, asset_name, credential_type, account_name=None):
     matches = [
         e for e in entitlements
         if (e.get("Account", {}).get("AssetName", "").lower() == asset_name.lower()
-            or e.get("Account", {}).get("AssetNetworkAddress") == asset_name)
+            or (e.get("Account", {}).get("AssetNetworkAddress") or "").lower() == asset_name.lower())
     ]
 
     if account_name:
