@@ -13,7 +13,7 @@ DOCUMENTATION = """
     name: safeguardcredentials
     version_added: "0.9"
     author:
-      - Brad Nicholes (!UNKNOWN) <brad.nicholes@oneidentity.com>
+      - One Identity LLC <support@oneidentity.com>
     short_description: retrieve credentials from Safeguard for Privileged Passwords vault
     description:
       - Retrieve credentials from the Safeguard for Privileged Passwords vault given a user certificate and API key that

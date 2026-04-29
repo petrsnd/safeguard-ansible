@@ -3,7 +3,7 @@ name: safeguardcollection
 version: 2.0.0
 readme: README.md
 authors:
-  - "Brad Nicholes <brad.nicholes@oneidentity.com>"
+  - "One Identity LLC <support@oneidentity.com>"
 description: Provides plugins to integrate Ansible with Safeguard for Privileged Passwords
 license:
   - "Apache-2.0"

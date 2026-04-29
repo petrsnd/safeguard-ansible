@@ -16,7 +16,7 @@ DOCUMENTATION = """
     name: safeguardaccessrequest
     version_added: "2.0"
     author:
-      - Adrian Lopez (Datadope) <adrian.lopez@datadope.io>
+      - One Identity LLC <support@oneidentity.com>
     short_description: retrieve credentials from Safeguard for Privileged Passwords via Access Requests
     description:
       - Retrieve credentials (passwords or SSH keys) from the Safeguard for Privileged Passwords vault
