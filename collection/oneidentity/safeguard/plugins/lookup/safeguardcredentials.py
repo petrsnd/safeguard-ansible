@@ -109,6 +109,8 @@ class LookupModule(LookupBase):
         key = a2aconnection.get('spp_certificate_key', None)
         tls_cert = a2aconnection.get('spp_ca_cert', None)
         validate_certs = a2aconnection.get('spp_validate_certs', True)
+        if isinstance(validate_certs, str):
+            validate_certs = validate_certs.lower() not in ('false', '0', 'no')
         credential_type = a2aconnection.get('spp_credential_type', A2AType.PASSWORD)
         if credential_type.lower() == A2AType.PASSWORD:
             credential_type = A2AType.PASSWORD
