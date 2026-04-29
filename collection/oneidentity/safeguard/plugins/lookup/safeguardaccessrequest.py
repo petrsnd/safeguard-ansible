@@ -1,6 +1,7 @@
-# (c) 2024, Adrian Lopez <adrian.lopez@datadope.io>
-# (c) 2024, Datadope
-# Adapted for PySafeguard v8
+# Copyright (c) One Identity LLC.
+# Licensed under the Apache License, Version 2.0.
+# See LICENSE file in the project root for full license information.
+# Adapted for PySafeguard v8 from original code by Adrian Lopez <adrian.lopez@datadope.io>.
 
 import time
 

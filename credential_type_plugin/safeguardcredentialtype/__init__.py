@@ -1,3 +1,7 @@
+# Copyright (c) One Identity LLC.
+# Licensed under the Apache License, Version 2.0.
+# See LICENSE file in the project root for full license information.
+
 import collections
 
 from pysafeguard import A2AContext, A2AType

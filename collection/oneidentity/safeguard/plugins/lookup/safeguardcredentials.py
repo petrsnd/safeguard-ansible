@@ -1,5 +1,6 @@
-# (c) 2023, Brad Nicholes <brad.nicholes@oneidentity.com>
-# (c) 2023, One Identity LLC.
+# Copyright (c) One Identity LLC.
+# Licensed under the Apache License, Version 2.0.
+# See LICENSE file in the project root for full license information.
 
 from ansible.errors import AnsibleError
 from ansible.module_utils._text import to_native
