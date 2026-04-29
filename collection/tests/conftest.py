@@ -186,11 +186,27 @@ def a2a_setup(admin_client, test_pw_account, test_sshkey_account, client_cert):
     cert_path, key_path, thumbprint = client_cert
     cert_b64 = read_cert_base64(cert_path)
 
-    upload_trusted_cert(admin_client, cert_b64)
-    cert_user = create_cert_user(admin_client, thumbprint)
-    a2a_reg = create_a2a_registration(admin_client, cert_user["Id"])
-    ra_pw = add_retrievable_account(admin_client, a2a_reg["Id"], test_pw_account["Id"])
-    ra_key = add_retrievable_account(admin_client, a2a_reg["Id"], test_sshkey_account["Id"])
+    # Track created objects for cleanup on partial setup failure
+    created_cert = False
+    cert_user = None
+    a2a_reg = None
+
+    try:
+        upload_trusted_cert(admin_client, cert_b64)
+        created_cert = True
+        cert_user = create_cert_user(admin_client, thumbprint)
+        a2a_reg = create_a2a_registration(admin_client, cert_user["Id"])
+        ra_pw = add_retrievable_account(admin_client, a2a_reg["Id"], test_pw_account["Id"])
+        ra_key = add_retrievable_account(admin_client, a2a_reg["Id"], test_sshkey_account["Id"])
+    except Exception:
+        # Best-effort cleanup of partially created objects
+        if a2a_reg:
+            delete_a2a_registration(admin_client, a2a_reg["Id"])
+        if cert_user:
+            delete_user(admin_client, cert_user["Id"])
+        if created_cert:
+            delete_trusted_cert(admin_client, thumbprint)
+        raise
 
     yield {
         "pw_api_key": ra_pw["ApiKey"],
@@ -214,18 +230,35 @@ REQUESTER_PASSWORD = "SgAns_Req_P@ss_42!"
 @pytest.fixture(scope="session")
 def ar_setup(admin_client, spp_host, test_asset, test_pw_account, test_sshkey_account, spp_verify):
     """Provision the access request chain with separate accounts per credential type."""
-    user = create_local_user(admin_client, label="Requester")
-    set_user_password(admin_client, user["Id"], REQUESTER_PASSWORD)
+    # Track created objects for cleanup on partial setup failure
+    user = None
+    role = None
+    pw_policy = None
+    sshkey_policy = None
 
-    role = create_role(admin_client, user["Id"])
-    pw_policy = create_access_policy(
-        admin_client, role["Id"], test_pw_account["Id"],
-        request_type="Password", label="PwPolicy",
-    )
-    sshkey_policy = create_access_policy(
-        admin_client, role["Id"], test_sshkey_account["Id"],
-        request_type="SshKey", label="SshKeyPolicy",
-    )
+    try:
+        user = create_local_user(admin_client, label="Requester")
+        set_user_password(admin_client, user["Id"], REQUESTER_PASSWORD)
+        role = create_role(admin_client, user["Id"])
+        pw_policy = create_access_policy(
+            admin_client, role["Id"], test_pw_account["Id"],
+            request_type="Password", label="PwPolicy",
+        )
+        sshkey_policy = create_access_policy(
+            admin_client, role["Id"], test_sshkey_account["Id"],
+            request_type="SshKey", label="SshKeyPolicy",
+        )
+    except Exception:
+        # Best-effort cleanup of partially created objects
+        if sshkey_policy:
+            delete_access_policy(admin_client, sshkey_policy["Id"])
+        if pw_policy:
+            delete_access_policy(admin_client, pw_policy["Id"])
+        if role:
+            delete_role(admin_client, role["Id"])
+        if user:
+            delete_user(admin_client, user["Id"])
+        raise
 
     yield {
         "spp_appliance": spp_host,

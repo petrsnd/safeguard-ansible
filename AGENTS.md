@@ -24,8 +24,9 @@ safeguard-ansible/
 │   │   ├── pytest.ini                   # Pytest config & markers
 │   │   ├── requirements.txt             # Test dependencies
 │   │   ├── conftest.py                  # Session fixtures, playbook runner, auto-skip
-│   │   ├── test_safeguardcredentials.py # A2A lookup plugin tests (7 tests)
-│   │   ├── test_safeguardaccessrequest.py # Access request plugin tests (11 tests)
+│   │   ├── test_safeguardcredentials.py # A2A lookup plugin tests (8 tests)
+│   │   ├── test_safeguardaccessrequest.py # Access request plugin tests (10 tests)
+│   │   ├── test_tls_verification.py    # TLS certificate verification tests (3 tests)
 │   │   ├── helpers/
 │   │   │   ├── __init__.py
 │   │   │   ├── certificates.py          # Self-signed cert & SSH key generation
@@ -38,6 +39,7 @@ safeguard-ansible/
 │   │   │   ├── a2a_missing_appliance.yml
 │   │   │   ├── a2a_missing_cert.yml
 │   │   │   ├── a2a_invalid_credtype.yml
+│   │   │   ├── a2a_tls_verified.yml
 │   │   │   ├── accessrequest_password.yml
 │   │   │   ├── accessrequest_privatekey.yml
 │   │   │   ├── accessrequest_account.yml
@@ -45,6 +47,7 @@ safeguard-ansible/
 │   │   │   ├── accessrequest_known_password.yml
 │   │   │   ├── accessrequest_envvars.yml
 │   │   │   ├── accessrequest_invalid_credtype.yml
+│   │   │   ├── accessrequest_tls_verified.yml
 │   │   │   └── accessrequest_bad_credentials.yml
 │   │   └── Ansible/                     # Legacy manual test inventory
 │   │       ├── inventory.yaml
@@ -165,7 +168,7 @@ SPP_HOST=<appliance-ip> SPP_ADMIN_PASSWORD=<admin-pw> python3 -m pytest -v
 | `SPP_ADMIN_PASSWORD` | No       | Bootstrap admin password (default: `Admin123`) |
 | `SPP_CA_FILE`        | No       | TLS CA bundle path (uses system CA store if unset) |
 
-All 18 tests skip automatically when `SPP_HOST` is not set.
+All 21 tests skip automatically when `SPP_HOST` is not set.
 
 **CI limitation**: These tests cannot run in CI/CD pipelines because they
 require a live SPP appliance. The pipeline's PR validation stage only builds
@@ -182,15 +185,17 @@ correctness must be validated manually against a test appliance before release.
 5. Verify credentials are retrieved correctly (including value-match checks)
 6. Clean up all provisioned objects in reverse order
 
-**Test coverage** (18 tests):
+**Test coverage** (21 tests):
 
-- **A2A plugin** (7 tests): password retrieval, password value correctness,
+- **A2A plugin** (8 tests): password retrieval, password value correctness,
   private key retrieval, multi-key retrieval, invalid API key, missing
   appliance, missing certificate, invalid credential type
-- **Access request plugin** (11 tests): password retrieval, explicit account
+- **Access request plugin** (10 tests): password retrieval, explicit account
   name, password value correctness, private key retrieval, SSH key with
   account name, env var configuration, invalid asset, invalid account,
   invalid credential type, bad user credentials
+- **TLS verification** (3 tests): A2A with CA bundle, access request with
+  CA bundle, A2A fails without valid CA bundle
 
 ### Manual integration testing (credential type plugin)
 
