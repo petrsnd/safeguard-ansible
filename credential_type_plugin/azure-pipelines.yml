@@ -1,107 +1,90 @@
 # Build Safeguard Ansible Credential Type Plugin
 
+variables:
+  - template: ../pipeline-templates/global-variables.yml
+
 trigger:
   branches:
-    include: [ main,  release-* ]
+    include:
+    - main
+    - release-*
+  tags:
+    include:
+    - 'credplugin-v*'
   paths:
-    include: [credential_type_plugin]
-    exclude: [README.md]
+    include:
+    - credential_type_plugin/
+    - pipeline-templates/
+    exclude:
+    - README.md
+    - AGENTS.md
 
-pool:
-  vmImage: ubuntu-latest
+pr:
+  branches:
+    include:
+    - main
+    - release-*
+  paths:
+    include:
+    - credential_type_plugin/
+    - pipeline-templates/
+    exclude:
+    - README.md
+    - AGENTS.md
 
-variables:
-  version: '1.2.$(Build.BuildId)'
-  workingDir: '$(Build.SourcesDirectory)/credential_type_plugin'
-  isPrerelease: ${{ true }}
-  isReleaseBranch: $[ or( eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release-') ) ]
+jobs:
+# -------------------------------------------------------------------
+# PR Validation — build only, no publishing
+# -------------------------------------------------------------------
+- job: PRValidation
+  displayName: 'PR Validation - Credential Plugin'
+  condition: eq(variables['Build.Reason'], 'PullRequest')
 
-steps:
-- task: Bash@3
-  inputs:
-    targetType: 'inline'
-    script: 'env | sort'
-  displayName: 'Display environment variables'
+  pool:
+    vmImage: ubuntu-latest
 
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: 3.9
+  steps:
+  - template: ../pipeline-templates/build-credplugin-steps.yml
 
-- script: |
-    python3 -m pip install --upgrade pip wheel twine
-    python3 -m pip install build
-    export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
-  workingDirectory: '$(workingDir)'
-  displayName: 'Install build software'
+# -------------------------------------------------------------------
+# Build and publish credential type plugin
+# -------------------------------------------------------------------
+- job: BuildCredPlugin
+  displayName: 'Build and publish credential type plugin'
+  condition: ne(variables['Build.Reason'], 'PullRequest')
 
-- task: PowerShell@2
-  displayName: Update the version in setup.py
-  inputs:
-    targetType: 'inline'
-    script: |
-      $file = "setup.py"
-      (Get-Content $file).replace('0.9.0', "$(version)") | Set-Content $file
-    workingDirectory: '$(workingDir)'
-    failOnStderr: true
+  pool:
+    vmImage: ubuntu-latest
 
-- script: |
-    python3 -m build
-  workingDirectory: '$(workingDir)'
-  displayName: Build PyPi dist
+  steps:
+  - template: ../pipeline-templates/build-credplugin-steps.yml
 
-- task: CopyFiles@2
-  inputs:
-    SourceFolder: '$(workingDir)'
-    Contents: 'dist/*'
-    TargetFolder: '$(build.artifactstagingdirectory)'
-  displayName: 'Copy dist to artifact staging directory'
+  # GitHub release — prerelease for dev builds, full release for tag builds
+  - task: GitHubRelease@1
+    displayName: 'Publish credential plugin GitHub release'
+    inputs:
+      gitHubConnection: 'PangaeaBuild-GitHub'
+      repositoryName: 'OneIdentity/safeguard-ansible'
+      action: 'create'
+      target: '$(Build.SourceVersion)'
+      tagSource: 'userSpecifiedTag'
+      tag: '$(ReleaseTag)'
+      title: 'Safeguard Credential Type $(PackageVersion)'
+      isPreRelease: ${{ not(startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
+      changeLogCompareToRelease: 'lastFullRelease'
+      changeLogType: 'commitBased'
+      addChangeLog: true
+      assets: $(Build.ArtifactStagingDirectory)/credplugin/*
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    pathToPublish: '$(Build.ArtifactStagingDirectory)'
-    artifactName: 'SafeguardCredentialType'
-  displayName: 'Publish the artifacts'
+  # PyPI publish — only for tag builds (official releases)
+  - task: TwineAuthenticate@1
+    displayName: 'Twine Authenticate'
+    condition: and(succeeded(), eq(variables.isCredPluginTag, 'True'))
+    inputs:
+      pythonUploadServiceConnection: pypiOneIdentity
 
-- task: Bash@3
-  inputs:
-    targetType: 'inline'
-    script: 'ls $(Build.ArtifactStagingDirectory)'
-  displayName: 'List staging directory'
-
-# Change the service connection to the pypiOneIdentity connection when ready to publish to Pypi
-- task: TwineAuthenticate@1
-  displayName: Twine Authenticate
-  condition: and(succeeded(), eq(variables.isReleaseBranch, true), eq(variables.isPrerelease, false))
-  inputs:
-    pythonUploadServiceConnection: pypiOneIdentity
-
-- task: Bash@3
-  inputs:
-    targetType: 'inline'
-    script: 'cat $(PYPIRC_PATH)'
-  displayName: 'Display .pypirc config file'
-  condition: and(succeeded(), eq(variables.isReleaseBranch, true), eq(variables.isPrerelease, false))
-
-- script: |
-    python3 -m twine upload --verbose --config-file $(PYPIRC_PATH) $(Build.ArtifactStagingDirectory)/dist/*
-  displayName: Upload release to PyPi OneIdentity
-  condition: and(succeeded(), eq(variables.isReleaseBranch, true), eq(variables.isPrerelease, false))
-
-- task: GitHubRelease@1
-  inputs:
-    gitHubConnection: 'github.com.SafeguardPipelines'
-    repositoryName: 'OneIdentity/Safeguard-ansible'
-    action: 'create'
-    target: '$(Build.SourceVersion)'
-    tagSource: 'userSpecifiedTag'
-    tag: 'release-$(version)'
-    title: 'Safeguard Credential Type $(version)'
-    isPreRelease: $(isPrerelease)
-    changeLogCompareToRelease: 'lastFullRelease'
-    changeLogType: 'commitBased'
-    assets: |
-      $(Build.ArtifactStagingDirectory)/dist/*
-  displayName: 'Creating and publishing a release to Github'
-  condition: and(succeeded(), eq(variables.isReleaseBranch, true))
-  #Replace the above condition with this one to turn off pre-releases being published
-  #condition: and(succeeded(), eq(variables.isReleaseBranch, true), eq(variables.isPrerelease, false))
+  - script: |
+      python3 -m pip install --upgrade twine
+      twine upload --verbose --config-file $(PYPIRC_PATH) $(Build.ArtifactStagingDirectory)/credplugin/*
+    displayName: 'Upload to PyPI'
+    condition: and(succeeded(), eq(variables.isCredPluginTag, 'True'))

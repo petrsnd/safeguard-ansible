@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safeguardcredentialtype"
+version = "2.0.0"
+description = "One Identity Safeguard Credential Type plugin for Ansible"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = "Apache-2.0"
+keywords = ["ansible", "oneidentity"]
+authors = [
+    { name = "One Identity LLC", email = "support@oneidentity.com" }
+]
+maintainers = [
+    { name = "One Identity LLC", email = "support@oneidentity.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pysafeguard>=8,<9",
+]
+
+[project.urls]
+Homepage = "http://oneidentity.com"
+Repository = "https://github.com/OneIdentity/safeguard-ansible"
+
+[tool.setuptools.packages.find]
+include = ["safeguardcredentialtype*"]
+
+[project.entry-points."awx.credential_plugins"]
+spp_plugin = "safeguardcredentialtype:spp_plugin"

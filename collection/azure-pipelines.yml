@@ -1,99 +1,91 @@
 # Build Safeguard Ansible Plugin Collection
 
+variables:
+  - template: ../pipeline-templates/global-variables.yml
+
 trigger:
   branches:
-    include: [ main,  release-* ]
+    include:
+    - main
+    - release-*
+  tags:
+    include:
+    - 'collection-v*'
   paths:
-    include: [collection]
-    exclude: [README.md]
+    include:
+    - collection/
+    - pipeline-templates/
+    exclude:
+    - README.md
+    - AGENTS.md
 
-pool:
-  vmImage: ubuntu-latest
+pr:
+  branches:
+    include:
+    - main
+    - release-*
+  paths:
+    include:
+    - collection/
+    - pipeline-templates/
+    exclude:
+    - README.md
+    - AGENTS.md
 
-variables:
-  version: '1.2.$(Build.BuildId)'
-  targetDir: 'target'
-  workingDir: '$(Build.SourcesDirectory)/collection'
-  isPrerelease: ${{ true }}
-  isReleaseBranch: $[ or( eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release-') ) ]
+jobs:
+# -------------------------------------------------------------------
+# PR Validation — build only, no publishing
+# -------------------------------------------------------------------
+- job: PRValidation
+  displayName: 'PR Validation - Collection'
+  condition: eq(variables['Build.Reason'], 'PullRequest')
 
-steps:
-- task: Bash@3
-  inputs:
-    targetType: 'inline'
-    script: 'env | sort'
-  displayName: 'Display environment variables'
+  pool:
+    vmImage: ubuntu-latest
 
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: 3.9
+  steps:
+  - template: ../pipeline-templates/build-collection-steps.yml
 
-- script: |
-    python3 -m pip install --user ansible-core
-    python3 -m pip install antsibull-changelog
-  displayName: 'Install ansible-core'
+# -------------------------------------------------------------------
+# Build and publish Ansible Galaxy collection
+# -------------------------------------------------------------------
+- job: BuildCollection
+  displayName: 'Build and publish collection'
+  condition: ne(variables['Build.Reason'], 'PullRequest')
 
-- task: PowerShell@2
-  displayName: Update the version in galaxy.yml
-  inputs:
-    targetType: 'inline'
-    script: |
-      $file = "collection/oneidentity/safeguard/galaxy.yml"
-      (Get-Content $file).replace('0.9.0', "$(version)") | Set-Content $file
-    failOnStderr: true
+  pool:
+    vmImage: ubuntu-latest
 
-- script: |
-    cd collection/oneidentity/safeguard
-    ansible-galaxy collection build
-  displayName: 'Build plugin collection'
+  steps:
+  - template: ../pipeline-templates/build-collection-steps.yml
 
-- task: CopyFiles@2
-  inputs:
-    sourceFolder: '$(Build.SourcesDirectory)/collection/oneidentity/safeguard'
-    contents: '*.tar.gz'
-    targetFolder: $(Build.ArtifactStagingDirectory)
-  displayName: 'Copy files to staging folder'
+  # GitHub release — prerelease for dev builds, full release for tag builds
+  - task: GitHubRelease@1
+    displayName: 'Publish collection GitHub release'
+    inputs:
+      gitHubConnection: 'PangaeaBuild-GitHub'
+      repositoryName: 'OneIdentity/safeguard-ansible'
+      action: 'create'
+      target: '$(Build.SourceVersion)'
+      tagSource: 'userSpecifiedTag'
+      tag: '$(ReleaseTag)'
+      title: 'Safeguard Collection $(PackageVersion)'
+      isPreRelease: ${{ not(startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
+      changeLogCompareToRelease: 'lastFullRelease'
+      changeLogType: 'commitBased'
+      addChangeLog: true
+      assets: $(Build.ArtifactStagingDirectory)/collection/*.tar.gz
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    pathToPublish: '$(Build.ArtifactStagingDirectory)'
-    artifactName: 'SafeguardCollection'
-  displayName: 'Publishing the artifacts'
+  # Galaxy publish — only for tag builds (official releases)
+  - task: AzureKeyVault@1
+    displayName: 'Get Ansible Galaxy API key'
+    condition: and(succeeded(), eq(variables.isCollectionTag, 'True'))
+    inputs:
+      azureSubscription: 'OneIdentity.RD.SBox.Safeguard-ServiceConnection'
+      KeyVaultName: 'SafeguardBuildSecrets'
+      SecretsFilter: 'AnsibleGalaxyApiKey1'
 
-- task: Bash@3
-  inputs:
-    targetType: 'inline'
-    script: 'ls $(Build.ArtifactStagingDirectory)'
-  displayName: 'List staging directory'
-
-- task: GitHubRelease@1
-  inputs:
-    gitHubConnection: 'github.com.SafeguardPipelines'
-    repositoryName: 'OneIdentity/Safeguard-ansible'
-    action: 'create'
-    target: '$(Build.SourceVersion)'
-    tagSource: 'userSpecifiedTag'
-    tag: 'release-$(version)'
-    title: 'Safeguard Collection $(version)'
-    isPreRelease: $(isPrerelease)
-    changeLogCompareToRelease: 'lastFullRelease'
-    changeLogType: 'commitBased'
-    assets: |
-      $(Build.ArtifactStagingDirectory)/*.tar.gz
-  displayName: 'Creating and publishing a release to Github'
-  condition: and(succeeded(), eq(variables.isReleaseBranch, true))
-  #Replace the above condition with this one to turn off pre-releases being published
-  #condition: and(succeeded(), eq(variables.isReleaseBranch, true), eq(variables.isPrerelease, false))
-
-- task: AzureKeyVault@1
-  inputs:
-    azureSubscription: 'OneIdentity.RD.SBox.Safeguard-ServiceConnection'
-    KeyVaultName: 'SafeguardBuildSecrets'
-    SecretsFilter: 'AnsibleGalaxyApiKey1'
-  displayName: 'Get Galaxy.Ansible.com API key from Sandbox Azure Key Vault'
-  condition: and(succeeded(), eq(variables.isReleaseBranch, true), eq(variables.isPrerelease, false))
-
-- script: |
-    ansible-galaxy collection publish $(Build.ArtifactStagingDirectory)/oneidentity-safeguardcollection-$(version).tar.gz --token $(AnsibleGalaxyApiKey1)
-  displayName: 'Publish the collection to Ansible Galaxy'
-  condition: and(succeeded(), eq(variables.isReleaseBranch, true), eq(variables.isPrerelease, false))
+  - script: |
+      ansible-galaxy collection publish $(Build.ArtifactStagingDirectory)/collection/oneidentity-safeguardcollection-$(PackageVersion).tar.gz --token $(AnsibleGalaxyApiKey1)
+    displayName: 'Publish collection to Ansible Galaxy'
+    condition: and(succeeded(), eq(variables.isCollectionTag, 'True'))

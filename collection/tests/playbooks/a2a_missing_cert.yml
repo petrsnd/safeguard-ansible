@@ -1,0 +1,15 @@
+- name: Test A2A with missing certificate path (should fail)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Attempt retrieval without certificate
+      ansible.builtin.set_fact:
+        credential: >-
+          {{ lookup('oneidentity.safeguardcollection.safeguardcredentials',
+             lookup('env', 'SGANS_A2A_API_KEY'),
+             a2aconnection=a2aconnection) }}
+      vars:
+        a2aconnection:
+          spp_appliance: "{{ spp_host }}"
+          spp_certificate_key: "{{ a2a_cert_key }}"

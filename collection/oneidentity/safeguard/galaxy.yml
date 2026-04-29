@@ -1,9 +1,9 @@
 namespace: oneidentity
 name: safeguardcollection
-version: 0.9.0
+version: 2.0.0
 readme: README.md
 authors:
-  - "Brad Nicholes <brad.nicholes@oneidentity.com>"
+  - "One Identity LLC <support@oneidentity.com>"
 description: Provides plugins to integrate Ansible with Safeguard for Privileged Passwords
 license:
   - "Apache-2.0"
@@ -17,5 +17,6 @@ repository: "https://github.com/OneIdentity/safeguard-ansible"
 documentation: "https://github.com/OneIdentity/safeguard-ansible"
 homepage: "https://github.com/OneIdentity/safeguard-ansible"
 issues: "https://github.com/OneIdentity/safeguard-ansible/issues"
-build_ignore: []
+build_ignore:
+  - tests/
 

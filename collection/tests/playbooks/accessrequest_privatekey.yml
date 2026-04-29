@@ -1,0 +1,26 @@
+- name: Test access request SSH key retrieval
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Retrieve SSH key via access request
+      ansible.builtin.set_fact:
+        credential: >-
+          {{ lookup('oneidentity.safeguardcollection.safeguardaccessrequest',
+             asset_name, account_name,
+             spp_appliance=spp_appliance,
+             spp_provider=spp_provider,
+             spp_user=spp_user,
+             spp_password=lookup('env', 'SGANS_SPP_PASSWORD'),
+             spp_credential_type='privatekey') }}
+      no_log: true
+
+    - name: Verify SSH key
+      ansible.builtin.assert:
+        that:
+          - credential is defined
+          - credential is string
+          - credential | length > 0
+          - "'BEGIN' in credential"
+          - "'PRIVATE KEY' in credential"
+        fail_msg: "Access request SSH key retrieval failed"

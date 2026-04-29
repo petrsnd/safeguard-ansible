@@ -1,0 +1,23 @@
+- name: Test access request with explicit account name
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Retrieve password for specific account
+      ansible.builtin.set_fact:
+        credential: >-
+          {{ lookup('oneidentity.safeguardcollection.safeguardaccessrequest',
+             asset_name, account_name,
+             spp_appliance=spp_appliance,
+             spp_provider=spp_provider,
+             spp_user=spp_user,
+             spp_password=lookup('env', 'SGANS_SPP_PASSWORD')) }}
+      no_log: true
+
+    - name: Verify credential
+      ansible.builtin.assert:
+        that:
+          - credential is defined
+          - credential is string
+          - credential | length > 0
+        fail_msg: "Access request with account name failed"

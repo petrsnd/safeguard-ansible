@@ -1,0 +1,7 @@
+variables:
+  - name: isTagBuild
+    value: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}
+  - name: isCollectionTag
+    value: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags/collection-v') }}
+  - name: isCredPluginTag
+    value: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags/credplugin-v') }}

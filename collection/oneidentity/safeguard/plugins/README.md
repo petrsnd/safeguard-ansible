@@ -1,18 +1,20 @@
-# Safeguard Collection Plugins Directory
+# Safeguard Collection Plugins
 
-The Safeguard resource for Ansible collection includes a lookup plugin that allows Ansible to pull credentials from Safeguard for Privileged Passwords (SPP). A lookup plugin can be used anywhere you can use templating in Ansible such as in playbooks, variable files, inventory files, etc. The following includes some examples of how to use the Safeguard credentials lookup plugin.
+The Safeguard collection for Ansible includes two lookup plugins for retrieving credentials from Safeguard for Privileged Passwords (SPP). Lookup plugins can be used anywhere Ansible supports templating — playbooks, variable files, inventory files, etc.
 
-## Safeguard Credentials lookup plugin
+## Safeguard Credentials (A2A) Lookup Plugin
 
-The Safeguard Credentials lookup plugin allows Ansible to fetch a credential from SPP through the Application to Application (A2A) API. This requires that an A2A registration has been created in SPP. For more information about how to create an A2A registration, please see the Safeguard for Privileged Passwords Administration Guide for your version of SPP (<https://support.oneidentity.com/technical-documents>).
+The Safeguard Credentials lookup plugin retrieves credentials from SPP through the Application to Application (A2A) API. This requires an A2A registration in SPP that maps a client certificate to one or more retrievable accounts. For more information about A2A registrations, see the Safeguard for Privileged Passwords Administration Guide for your version of SPP (<https://support.oneidentity.com/technical-documents>).
 
 ### Prerequisites
 
-All of the Safeguard plugins have a dependency on One Identity PySafeguard python module. PySafeguard provides a native python client library for accessing the SPP appliance. PySafeguard can be installed by running the following command:
+All of the Safeguard plugins have a dependency on One Identity PySafeguard python module (version 8.0 or later). PySafeguard provides a native python client library for accessing the SPP appliance. PySafeguard can be installed by running the following command:
 
 ```text
-> python3 -m pip install pysafeguard
+> python3 -m pip install "pysafeguard>=8,<9"
 ```
+
+PySafeguard requires Python 3.10 or later.
 
 For more information about PySafeguard, please see <https://github.com/OneIdentity/PySafeguard>.
 
@@ -22,18 +24,20 @@ Installation of the Safeguard collection must be done using the Ansible-Galaxy c
 
 #### Installing from the Ansible Galaxy repository
 
-From the Ansible host computer, run the following command:
+From the Ansible host computer, run the following commands:
 
 ```text
+> pip install "pysafeguard>=8,<9"
 > ansible-galaxy collection install oneidentity.safeguardcollection -p <your-collection-location>
 ```
 
 #### Installing from the tarball
 
 1. Download the latest release tarball from the safeguard-ansible GitHub repository to the Ansible controller node. (<https://github.com/OneIdentity/safeguard-ansible/releases>).
-2. Install the Safeguard resource collection using the ansible-galaxy command line tool.
+2. Install PySafeguard and the Safeguard resource collection:
 
 ```text
+> pip install "pysafeguard>=8,<9"
 > ansible-galaxy collection install oneidentity-safeguardcollection-<version>.tar.gz -p <your-collection-location>
 ```
 
@@ -66,7 +70,7 @@ vars:
       spp_appliance: 192.168.1.234
       spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
       spp_certificate_key: /etc/ansible/spp/a2ausercert.key
-      spp_tls_cert: /etc/ansible/spp/spptlscert.pem
+      spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
       spp_credential_type: password
   spp_credential: "{{lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_a2a_apikey, a2aconnection=a2aconnectioninfo)}}"
 ```
@@ -78,8 +82,39 @@ Parameters:
   * **spp_appliance** - The IP address or host name of the SPP appliance.
   * **spp_certificate_file** - The full path to the user authentication certificate (PEM format).
   * **spp_certificate_key** - The full path to the user authentication private key (PEM format). NOTE: It is the responsibility of the Ansible administrator to make sure that the private key is stored in a safe location and can only be read by Ansible.
-  * **spp_tls_cert** (optional) - The full path to the TLS public certificate that is associated with the SPP appliance. If this certificate path is not provided, the lookup plugin will disable TLS validation which may produce a warning.
+  * **spp_ca_cert** (optional) - The full path to a CA certificate bundle for TLS verification of the SPP appliance. When provided, overrides the system CA store.
+  * **spp_validate_certs** (optional) - Whether to validate TLS certificates (default: **true**). Set to **false** only for testing with self-signed certificates.
   * **spp_credential_type** (optional) - The type of credential that should be retrieved from SPP. Must be **password** (default) or **privatekey**.
+
+## Safeguard Access Request lookup plugin
+
+The Safeguard Access Request lookup plugin allows Ansible to retrieve credentials (passwords or SSH keys) from SPP using username/password authentication and the Access Request workflow. This requires that the authenticated user has entitlements to request credentials for the target asset.
+
+### Configuration
+
+The Safeguard Access Request lookup plugin takes the asset name as a term and connection options as keyword arguments.
+
+```yaml
+vars:
+  spp_appliance: 192.168.1.234
+  spp_provider: local
+  spp_user: myuser
+  spp_password: mysecret
+  asset_password: "{{lookup('oneidentity.safeguardcollection.safeguardaccessrequest', 'myasset', spp_appliance=spp_appliance, spp_provider=spp_provider, spp_user=spp_user, spp_password=spp_password)}}"
+  asset_sshkey: "{{lookup('oneidentity.safeguardcollection.safeguardaccessrequest', 'myasset', 'root', spp_appliance=spp_appliance, spp_provider=spp_provider, spp_user=spp_user, spp_password=spp_password, spp_credential_type='privatekey')}}"
+```
+
+Parameters:
+
+* **asset name** (first term, required) - The name or IP address of the asset to retrieve the credential for.
+* **account name** (second term, optional) - Account name on the asset (e.g. `root`). Required when the asset has multiple accounts with entitlements.
+* **spp_appliance** - The IP address or host name of the SPP appliance.
+* **spp_provider** - The authentication provider name (e.g. `local`, or your AD/LDAP provider name).
+* **spp_user** - The authentication user name.
+* **spp_password** - The authentication password.
+* **spp_credential_type** (optional) - Type of credential to retrieve: `password` (default) or `privatekey`.
+* **spp_ca_cert** (optional) - Full path to a CA certificate bundle for TLS verification. When provided, overrides the system CA store.
+* **spp_validate_certs** (optional) - Whether to validate TLS certificates (default: `true`). Set to `false` only for testing with self-signed certificates.
 
 ## Examples
 
@@ -93,7 +128,7 @@ linuxservers:
       spp_appliance: 192.168.1.234
       spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
       spp_certificate_key: /etc/ansible/spp/a2ausercert.key
-      spp_tls_cert: /etc/ansible/spp/spptlscert.pem
+      spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
       spp_credential_type: password
   hosts:
     vm01:
@@ -116,7 +151,7 @@ a2aconnectioninfo:
     spp_appliance: 192.168.1.234
     spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
     spp_certificate_key: /etc/ansible/spp/a2ausercert.key
-    spp_tls_cert: /etc/ansible/spp/spptlscert.pem
+    spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
     spp_credential_type: password
 spp_credential: "{{lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2aconnectioninfo)}}"
 ```
@@ -131,18 +166,18 @@ Playbook file:
     my_spp_appliance: 192.168.1.234
     my_spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
     my_spp_certificate_key: /etc/ansible/spp/a2ausercert.key
-    my_spp_tls_cert: /etc/ansible/spp/spptlscert.pem
+    my_spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
     a2apasswordconnectioninfo:
       spp_appliance: "{{ my_spp_appliance }}"
       spp_certificate_file: "{{ my_spp_certificate_file }}"
       spp_certificate_key: "{{ my_spp_certificate_key }}"
-      spp_tls_cert: "{{ my_spp_tls_cert }}"
+      spp_ca_cert: "{{ my_spp_ca_cert }}"
       spp_credential_type: password
     a2aprivatekeyconnectioninfo:
       spp_appliance: "{{ my_spp_appliance }}"
       spp_certificate_file: "{{ my_spp_certificate_file }}"
       spp_certificate_key: "{{ my_spp_certificate_key }}"
-      spp_tls_cert: "{{ my_spp_tls_cert }}"
+      spp_ca_cert: "{{ my_spp_ca_cert }}"
       spp_credential_type: privatekey
   tasks:
     - name: Get the account password

@@ -5,7 +5,7 @@ managedservers:
       spp_appliance: <spp-host-address>
       spp_certificate_file: <a2a-cert-path>
       spp_certificate_key: <a2a-key-path>
-      spp_tls_cert: <tls-cert-path>
+      spp_ca_cert: <ca-bundle-path>
 
   hosts:
     vm01:
