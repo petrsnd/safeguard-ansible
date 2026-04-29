@@ -21,5 +21,8 @@ dependencies = [
 Homepage = "http://oneidentity.com"
 Repository = "https://github.com/OneIdentity/safeguard-ansible"
 
+[tool.setuptools.packages.find]
+include = ["safeguardcredentialtype*"]
+
 [project.entry-points."awx.credential_plugins"]
 spp_plugin = "safeguardcredentialtype:spp_plugin"
