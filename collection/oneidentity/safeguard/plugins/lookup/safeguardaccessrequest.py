@@ -218,9 +218,10 @@ def _find_entitlement(client, asset_name, credential_type, account_name=None):
     return {"AccountId": account["Id"], "AssetId": account["AssetId"]}
 
 
-def _find_existing_request(client, account_id, asset_id):
-    """Find an existing active access request for the given account/asset.
+def _find_existing_request(client, account_id, asset_id, access_request_type):
+    """Find an existing active access request for the given account/asset/type.
 
+    :arg access_request_type: The SPP AccessRequestType value (e.g. "Password", "SshKey")
     :returns: The request ID string, or None if no matching request exists
     """
     resp = client.get(Service.CORE, "AccessRequests")
@@ -238,6 +239,7 @@ def _find_existing_request(client, account_id, asset_id):
     for req in resp.json():
         if (req.get("AccountId") == account_id
                 and req.get("AssetId") == asset_id
+                and req.get("AccessRequestType") == access_request_type
                 and not req.get("WasExpired", True)
                 and req.get("State") in active_states):
             return req["Id"]
@@ -274,7 +276,8 @@ def _create_or_reuse_request(client, account_id, asset_id, asset_name, credentia
 
         if error_code == 90001:
             display.vvvv("Access request already exists for '%s' (error code 90001)" % asset_name)
-            request_id = _find_existing_request(client, account_id, asset_id)
+            request_id = _find_existing_request(client, account_id, asset_id,
+                                                    REQUEST_TYPES[credential_type])
             if request_id is not None:
                 return request_id
 
