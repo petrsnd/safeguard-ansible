@@ -1,10 +1,10 @@
-# Safeguard Collection Plugins Directory
+# Safeguard Collection Plugins
 
-The Safeguard resource for Ansible collection includes a lookup plugin that allows Ansible to pull credentials from Safeguard for Privileged Passwords (SPP). A lookup plugin can be used anywhere you can use templating in Ansible such as in playbooks, variable files, inventory files, etc. The following includes some examples of how to use the Safeguard credentials lookup plugin.
+The Safeguard collection for Ansible includes two lookup plugins for retrieving credentials from Safeguard for Privileged Passwords (SPP). Lookup plugins can be used anywhere Ansible supports templating — playbooks, variable files, inventory files, etc.
 
-## Safeguard Credentials lookup plugin
+## Safeguard Credentials (A2A) Lookup Plugin
 
-The Safeguard Credentials lookup plugin allows Ansible to fetch a credential from SPP through the Application to Application (A2A) API. This requires that an A2A registration has been created in SPP. For more information about how to create an A2A registration, please see the Safeguard for Privileged Passwords Administration Guide for your version of SPP (<https://support.oneidentity.com/technical-documents>).
+The Safeguard Credentials lookup plugin retrieves credentials from SPP through the Application to Application (A2A) API. This requires an A2A registration in SPP that maps a client certificate to one or more retrievable accounts. For more information about A2A registrations, see the Safeguard for Privileged Passwords Administration Guide for your version of SPP (<https://support.oneidentity.com/technical-documents>).
 
 ### Prerequisites
 

@@ -6,17 +6,36 @@ Ansible is an automation platform for handling the deployment and maintenance of
 
 ## What are the Ansible resources for Safeguard integration?
 
-Ansible uses plugins and modules to extend it's functionality. Ansible ships with a set of core plugins and modules in addition to the many plugins that can be downloaded and added to Ansible for use in playbooks and many other scenarios. This repository provides plugins that can be used to integrate Safeguard for Privileged Passwords (SPP) with Ansible. These plugins allow an Ansible playbook or the Ansible Automation Platform environment to pull credentials directly from SPP so that they can be used by Ansible to perform tasks. Two of the plugins that are available in this repository are the SPP lookup plugin and the Ansible Automation Platform credential type plugin. For more information about these plugins, please see the individual plugin folders.
+This repository provides Ansible plugins for integrating with One Identity Safeguard for Privileged Passwords (SPP). These plugins allow Ansible playbooks and the Ansible Automation Platform environment to pull credentials directly from SPP so that they can be used to perform tasks securely — without storing passwords in playbooks, inventory files, or version control.
+
+All plugins depend on the [PySafeguard](https://github.com/OneIdentity/PySafeguard) Python SDK (v8+) and require Python ≥ 3.10 and Ansible ≥ 2.14.
 
 ## Contents
 
-### Safeguard Plugins for Ansible
+### Safeguard Lookup Plugins for Ansible
 
-The Safeguard Credentials lookup plugin allows Ansible to fetch a credential from SPP through the Application to Application (A2A) API. For more information, please see <https://github.com/OneIdentity/safeguard-ansible/tree/main/collection/oneidentity/safeguard/plugins>.
+The collection provides two lookup plugins:
 
-### Safeguard Credential Type plugin for Ansible Automation Platform
+- **Safeguard Credentials (A2A)** — Retrieves credentials using a client certificate through the Application to Application (A2A) API. Best for automated, non-interactive workflows where a pre-registered certificate identifies the caller.
+- **Safeguard Access Request** — Retrieves credentials using username/password authentication (PKCE) through the Access Request workflow. Best for user-driven automation where credentials are checked out on behalf of a named user.
 
-The Safeguard Credential Type plugin is configured using the Ansible Automation Platform web interface and allows Ansible to define an SPP credential. For more information, please see <https://github.com/OneIdentity/safeguard-ansible/tree/main/credential_type_plugin>.
+For installation, configuration, and usage examples, see the [plugins documentation](https://github.com/OneIdentity/safeguard-ansible/tree/main/collection/oneidentity/safeguard/plugins).
+
+### Safeguard Credential Type Plugin for Ansible Automation Platform
+
+The Safeguard Credential Type plugin is configured using the AWX / Ansible Automation Platform web interface and allows Ansible to define an SPP credential that is automatically fetched at runtime. For more information, see the [credential type plugin documentation](https://github.com/OneIdentity/safeguard-ansible/tree/main/credential_type_plugin).
+
+## Integration Testing
+
+The collection includes an automated pytest-based integration test suite (18 tests) that runs against a live SPP appliance. Tests automatically provision and clean up all required SPP objects. See `collection/tests/` for details.
+
+```bash
+cd collection/tests
+pip install -r requirements.txt
+SPP_HOST=<appliance-ip> python3 -m pytest -v
+```
+
+Tests skip automatically when `SPP_HOST` is not set.
 
 ## Contributing to the Ansible Resources for Safeguard
 
