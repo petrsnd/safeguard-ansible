@@ -20,10 +20,11 @@ safeguard-ansible/
 │   └── build-credplugin-steps.yml       # Credential plugin build steps
 ├── collection/                          # Ansible Galaxy collection
 │   ├── azure-pipelines.yml              # Collection CI/CD pipeline
-│   ├── tests/                           # Automated integration test suite
+│   ├── tests/                           # Automated test suite
 │   │   ├── pytest.ini                   # Pytest config & markers
 │   │   ├── requirements.txt             # Test dependencies
 │   │   ├── conftest.py                  # Session fixtures, playbook runner, auto-skip
+│   │   ├── test_unit.py                 # Unit tests (32 tests, no appliance needed)
 │   │   ├── test_safeguardcredentials.py # A2A lookup plugin tests (8 tests)
 │   │   ├── test_safeguardaccessrequest.py # Access request plugin tests (10 tests)
 │   │   ├── test_tls_verification.py    # TLS certificate verification tests (3 tests)
@@ -152,14 +153,30 @@ python3 -m build
 
 ## Testing
 
-### Automated integration tests (lookup plugins)
+### Unit tests (collection lookup plugins)
+
+The collection has unit tests that exercise helper functions and logic
+without requiring a live appliance or Ansible. Tests are in
+`collection/tests/test_unit.py`.
+
+```bash
+cd collection/tests
+python3 -m pytest test_unit.py -v
+```
+
+**Coverage** (32 tests): `_resolve_verify` mapping, `_find_entitlement`
+matching/filtering/error handling, `_find_existing_request` state logic,
+`_checkout_with_retry` retry/timeout, `_create_or_reuse_request` success/reuse/error,
+and `validate_certs` string normalization.
+
+### Integration tests (collection lookup plugins)
 
 The collection has a pytest-based integration test suite that runs against a
 live SPP appliance. Tests are in `collection/tests/`.
 
 **Prerequisites**: Python ≥ 3.10, `pip install -r collection/tests/requirements.txt`
 
-**Running**:
+**Running all tests** (unit tests always run, integration tests require `SPP_HOST`):
 
 ```bash
 cd collection/tests
@@ -174,14 +191,15 @@ SPP_HOST=<appliance-ip> SPP_ADMIN_PASSWORD=<admin-pw> python3 -m pytest -v
 | `SPP_ADMIN_PASSWORD` | No       | Bootstrap admin password (default: `Admin123`) |
 | `SPP_CA_FILE`        | No       | TLS CA bundle path (uses system CA store if unset) |
 
-All 21 tests skip automatically when `SPP_HOST` is not set.
+Integration tests (21) skip automatically when `SPP_HOST` is not set.
+Unit tests (32) always run regardless of environment.
 
-**CI limitation**: These tests cannot run in CI/CD pipelines because they
-require a live SPP appliance. The pipeline's PR validation stage only builds
-the artifacts (collection tarball and wheel) to verify packaging. Behavioral
-correctness must be validated manually against a test appliance before release.
+**CI usage**: Unit tests can run in any CI pipeline. Integration tests
+require a live SPP appliance and are skipped in CI unless `SPP_HOST` is
+configured. The pipeline's PR validation stage runs unit tests and builds
+the artifacts (collection tarball and wheel) to verify packaging.
 
-**What the tests do**:
+**What the integration tests do**:
 
 1. Create a fully-privileged test admin using the bootstrap admin (PKCE auth)
 2. Provision test objects (asset, accounts, cert user, A2A registration, access
@@ -191,7 +209,7 @@ correctness must be validated manually against a test appliance before release.
 5. Verify credentials are retrieved correctly (including value-match checks)
 6. Clean up all provisioned objects in reverse order
 
-**Test coverage** (21 tests):
+**Integration test coverage** (21 tests):
 
 - **A2A plugin** (8 tests): password retrieval, password value correctness,
   private key retrieval, multi-key retrieval, invalid API key, missing

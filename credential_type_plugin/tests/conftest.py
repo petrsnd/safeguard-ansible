@@ -16,6 +16,9 @@ import sys
 
 import pytest
 
+# Make the credential plugin package importable regardless of cwd
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 # Make collection test helpers importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "collection", "tests"))
 
