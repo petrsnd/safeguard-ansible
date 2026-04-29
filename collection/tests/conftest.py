@@ -108,19 +108,18 @@ def admin_client(spp_host, spp_admin_password, spp_verify):
         auth=PkceAuth("local", user["Name"], TEST_ADMIN_PASSWORD),
         verify=spp_verify,
     )
-    client.login()
-
-    yield client
-
-    client.logout()
-
-    # Cleanup: delete test admin via bootstrap
-    bootstrap2 = SafeguardClient(
-        spp_host, auth=PkceAuth("local", "Admin", spp_admin_password), verify=spp_verify
-    )
-    bootstrap2.login()
-    delete_user(bootstrap2, user_id)
-    bootstrap2.logout()
+    try:
+        client.login()
+        yield client
+        client.logout()
+    finally:
+        # Cleanup: delete test admin via bootstrap
+        bootstrap2 = SafeguardClient(
+            spp_host, auth=PkceAuth("local", "Admin", spp_admin_password), verify=spp_verify
+        )
+        bootstrap2.login()
+        delete_user(bootstrap2, user_id)
+        bootstrap2.logout()
 
 
 # ---------------------------------------------------------------------------
