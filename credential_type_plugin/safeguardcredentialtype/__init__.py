@@ -73,7 +73,7 @@ def _get_spp_credential(**kwargs):
             )
         return credential.value
     except Exception as e:
-        raise ValueError('Failed to retrieve the credential.') from e
+        raise ValueError('Failed to retrieve the credential: %s' % e) from e
 
 
 spp_plugin = CredentialPlugin(
