@@ -9,15 +9,16 @@ from pysafeguard import A2AContext, A2AType
 CredentialPlugin = collections.namedtuple('CredentialPlugin', ['name', 'inputs', 'backend'])
 
 
-def _resolve_verify(tls_path):
-    """Map the user-facing TLS path value to a PySafeguard verify parameter.
+def _resolve_verify(tls_path, validate_certs=True):
+    """Map user-facing TLS options to a PySafeguard verify parameter.
 
-    :arg tls_path: A file path (str), True, False, or None
-    :returns: True, False, or a CA bundle path string
+    :arg tls_path: A CA bundle file path (str) or None/False
+    :arg validate_certs: Whether to validate TLS (bool, default True)
+    :returns: A CA bundle path, True (system CA), or False (no verification)
     """
     if isinstance(tls_path, str) and tls_path:
         return tls_path
-    if tls_path is True:
+    if validate_certs:
         return True
     return False
 
@@ -37,7 +38,11 @@ def _get_spp_credential(**kwargs):
     appliance = kwargs.get('spp_appliance', None)
     cert = kwargs.get('spp_certificate_path', None)
     key = kwargs.get('spp_key_path', None)
-    tls_path = kwargs.get('spp_tls_path', False)
+    tls_path = kwargs.get('spp_tls_path', None)
+    validate_certs = kwargs.get('spp_validate_certs', True)
+    # AWX passes string 'false'/'true' from UI — normalize to bool
+    if isinstance(validate_certs, str):
+        validate_certs = validate_certs.lower() not in ('false', '0', 'no')
     credential_type = kwargs.get('spp_credential_type', A2AType.PASSWORD)
     if credential_type.lower() == A2AType.PASSWORD:
         credential_type = A2AType.PASSWORD
@@ -55,7 +60,7 @@ def _get_spp_credential(**kwargs):
     if not key:
         raise ValueError('Missing client authentication key path.')
 
-    verify = _resolve_verify(tls_path)
+    verify = _resolve_verify(tls_path, validate_certs)
 
     try:
         if credential_type == A2AType.PRIVATEKEY:
@@ -94,8 +99,16 @@ spp_plugin = CredentialPlugin(
             'help_text': 'Full path to the client authentication private key (PEM). Ensure the private key is stored securely and readable only by Ansible.',
         }, {
             'id': 'spp_tls_path',
-            'label': 'Safeguard TLS certificate file path',
+            'label': 'Safeguard CA certificate file path',
             'type': 'string',
+            'help_text': 'Optional CA bundle path. If empty, the system CA store is used for TLS verification.',
+        }, {
+            'id': 'spp_validate_certs',
+            'label': 'Validate TLS certificates',
+            'type': 'string',
+            'choices': ['true', 'false'],
+            'default': 'true',
+            'help_text': 'Set to false only for testing with self-signed certificates.',
         }, {
             'id': 'spp_credential_type',
             'label': 'Safeguard credential type to retrieve',

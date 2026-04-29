@@ -4,9 +4,11 @@
 
 """Generate self-signed client certificates for A2A integration testing."""
 
+import base64
 import os
 import subprocess
 import tempfile
+import textwrap
 
 
 def generate_client_cert(tmpdir=None):
@@ -78,3 +80,46 @@ def generate_ssh_keypair(tmpdir=None):
         private_key = f.read()
 
     return key_path, private_key
+
+
+def build_ca_bundle(client, tmpdir=None):
+    """Build a CA bundle from the appliance's trusted CA certificates.
+
+    Downloads all certificates marked as CAs from the SPP TrustedCertificates
+    API and writes them as a PEM bundle file suitable for TLS verification.
+
+    :arg client: An authenticated SafeguardClient (verify=False is fine)
+    :arg tmpdir: Directory to write the bundle into (created if None)
+    :returns: Path to the CA bundle PEM file
+    """
+    from pysafeguard import Service
+
+    if tmpdir is None:
+        tmpdir = tempfile.mkdtemp(prefix="sgans_")
+
+    resp = client.get(Service.CORE, "TrustedCertificates")
+    resp.raise_for_status()
+
+    bundle_path = os.path.join(tmpdir, "ca_bundle.pem")
+    with open(bundle_path, "w") as f:
+        for cert in resp.json():
+            if not cert.get("IsCertificateAuthority", False):
+                continue
+            b64_raw = cert.get("Base64CertificateData", "")
+            if not b64_raw:
+                continue
+            # Clean embedded headers/whitespace from the API response
+            clean = b64_raw.replace("-----BEGIN CERTIFICATE-----", "")
+            clean = clean.replace("-----END CERTIFICATE-----", "")
+            clean = "".join(clean.split())
+            # Validate it decodes
+            try:
+                base64.b64decode(clean)
+            except Exception:
+                continue
+            pem = "-----BEGIN CERTIFICATE-----\n"
+            pem += "\n".join(textwrap.wrap(clean, 64))
+            pem += "\n-----END CERTIFICATE-----\n"
+            f.write(pem)
+
+    return bundle_path

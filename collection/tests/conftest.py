@@ -21,7 +21,7 @@ from pysafeguard import SafeguardClient, PkceAuth
 
 log = logging.getLogger("sgans_tests")
 
-from helpers.certificates import generate_client_cert, generate_ssh_keypair, read_cert_base64
+from helpers.certificates import generate_client_cert, generate_ssh_keypair, read_cert_base64, build_ca_bundle
 from helpers.provisioning import (
     create_access_policy,
     create_account,
@@ -121,6 +121,17 @@ def admin_client(spp_host, spp_admin_password, spp_verify):
     bootstrap2.login()
     delete_user(bootstrap2, user_id)
     bootstrap2.logout()
+
+
+# ---------------------------------------------------------------------------
+# TLS CA bundle — built from the appliance's trusted certificates
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def ca_bundle_path(admin_client, tmp_path_factory):
+    """Build a CA bundle from the appliance's trusted CA certificates."""
+    tmpdir = str(tmp_path_factory.mktemp("tls"))
+    return build_ca_bundle(admin_client, tmpdir)
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +286,10 @@ def ansible_env(installed_collection, spp_verify):
     # Suppress warnings about localhost
     env["ANSIBLE_LOCALHOST_WARNING"] = "false"
     if spp_verify and isinstance(spp_verify, str):
-        env["SPP_TLS_CERT"] = spp_verify
+        env["SPP_CA_CERT"] = spp_verify
+    else:
+        # No CA file — disable TLS validation for test appliances with self-signed certs
+        env["SPP_VALIDATE_CERTS"] = "false"
     return env
 
 
@@ -302,10 +316,15 @@ def run_playbook(playbook_name, extra_vars, ansible_env, secret_env=None,
     if secret_env:
         env.update(secret_env)
 
+    # Inject spp_validate_certs so A2A playbooks can pick it up as an Ansible var
+    merged_vars = dict(extra_vars)
+    if "SPP_VALIDATE_CERTS" in env and "spp_validate_certs" not in merged_vars:
+        merged_vars["spp_validate_certs"] = env["SPP_VALIDATE_CERTS"].lower() in ("true", "1", "yes")
+
     cmd = [
         "ansible-playbook", playbook_path,
         "-i", "localhost,",
-        "-e", json.dumps(extra_vars),
+        "-e", json.dumps(merged_vars),
     ]
 
     result = subprocess.run(

@@ -68,7 +68,7 @@ vars:
       spp_appliance: 192.168.1.234
       spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
       spp_certificate_key: /etc/ansible/spp/a2ausercert.key
-      spp_tls_cert: /etc/ansible/spp/spptlscert.pem
+      spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
       spp_credential_type: password
   spp_credential: "{{lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_a2a_apikey, a2aconnection=a2aconnectioninfo)}}"
 ```
@@ -80,7 +80,8 @@ Parameters:
   * **spp_appliance** - The IP address or host name of the SPP appliance.
   * **spp_certificate_file** - The full path to the user authentication certificate (PEM format).
   * **spp_certificate_key** - The full path to the user authentication private key (PEM format). NOTE: It is the responsibility of the Ansible administrator to make sure that the private key is stored in a safe location and can only be read by Ansible.
-  * **spp_tls_cert** (optional) - The full path to the TLS public certificate that is associated with the SPP appliance. If this certificate path is not provided, the lookup plugin will disable TLS validation which may produce a warning.
+  * **spp_ca_cert** (optional) - The full path to a CA certificate bundle for TLS verification of the SPP appliance. When provided, overrides the system CA store.
+  * **spp_validate_certs** (optional) - Whether to validate TLS certificates (default: **true**). Set to **false** only for testing with self-signed certificates.
   * **spp_credential_type** (optional) - The type of credential that should be retrieved from SPP. Must be **password** (default) or **privatekey**.
 
 ## Safeguard Access Request lookup plugin
@@ -110,7 +111,8 @@ Parameters:
 * **spp_user** - The authentication user name.
 * **spp_password** - The authentication password.
 * **spp_credential_type** (optional) - Type of credential to retrieve: `password` (default) or `privatekey`.
-* **spp_tls_cert** (optional) - The full path to the TLS public certificate for the SPP appliance. If not provided, TLS validation is disabled.
+* **spp_ca_cert** (optional) - Full path to a CA certificate bundle for TLS verification. When provided, overrides the system CA store.
+* **spp_validate_certs** (optional) - Whether to validate TLS certificates (default: `true`). Set to `false` only for testing with self-signed certificates.
 
 ## Examples
 
@@ -124,7 +126,7 @@ linuxservers:
       spp_appliance: 192.168.1.234
       spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
       spp_certificate_key: /etc/ansible/spp/a2ausercert.key
-      spp_tls_cert: /etc/ansible/spp/spptlscert.pem
+      spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
       spp_credential_type: password
   hosts:
     vm01:
@@ -147,7 +149,7 @@ a2aconnectioninfo:
     spp_appliance: 192.168.1.234
     spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
     spp_certificate_key: /etc/ansible/spp/a2ausercert.key
-    spp_tls_cert: /etc/ansible/spp/spptlscert.pem
+    spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
     spp_credential_type: password
 spp_credential: "{{lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2aconnectioninfo)}}"
 ```
@@ -162,18 +164,18 @@ Playbook file:
     my_spp_appliance: 192.168.1.234
     my_spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
     my_spp_certificate_key: /etc/ansible/spp/a2ausercert.key
-    my_spp_tls_cert: /etc/ansible/spp/spptlscert.pem
+    my_spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
     a2apasswordconnectioninfo:
       spp_appliance: "{{ my_spp_appliance }}"
       spp_certificate_file: "{{ my_spp_certificate_file }}"
       spp_certificate_key: "{{ my_spp_certificate_key }}"
-      spp_tls_cert: "{{ my_spp_tls_cert }}"
+      spp_ca_cert: "{{ my_spp_ca_cert }}"
       spp_credential_type: password
     a2aprivatekeyconnectioninfo:
       spp_appliance: "{{ my_spp_appliance }}"
       spp_certificate_file: "{{ my_spp_certificate_file }}"
       spp_certificate_key: "{{ my_spp_certificate_key }}"
-      spp_tls_cert: "{{ my_spp_tls_cert }}"
+      spp_ca_cert: "{{ my_spp_ca_cert }}"
       spp_credential_type: privatekey
   tasks:
     - name: Get the account password

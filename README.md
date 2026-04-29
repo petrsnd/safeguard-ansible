@@ -37,6 +37,16 @@ SPP_HOST=<appliance-ip> python3 -m pytest -v
 
 Tests skip automatically when `SPP_HOST` is not set.
 
+## Breaking Changes in v2.0.0
+
+- Requires PySafeguard ≥ 8.0 (completely new API)
+- Requires Python ≥ 3.10, Ansible ≥ 2.14
+- **TLS verification is now enabled by default.** Connections to SPP use the system CA store unless overridden. To disable verification (e.g. for self-signed certs in lab environments), set `spp_validate_certs: false`.
+- **`spp_tls_cert` renamed to `spp_ca_cert`** across both lookup plugins. Update your `a2aconnection` dicts and keyword arguments accordingly.
+- The environment variable `SPP_TLS_CERT` is now `SPP_CA_CERT`.
+- `setup.py` removed in favor of `pyproject.toml` for the credential type plugin.
+- Release tags changed from `release-*` to `collection-v*` / `credplugin-v*`.
+
 ## Contributing to the Ansible Resources for Safeguard
 
 Is something broken or something that should be added to the Ansible resources for Safeguard integration? [Log an issue](https://github.com/OneIdentity/safeguard-ansible/issues).

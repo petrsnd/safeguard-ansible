@@ -30,7 +30,8 @@ DOCUMENTATION = """
             - spp_appliance - IP address or host name of the Safeguard for Privileged Passwords appliance
             - spp_certificate_file - Full path to the A2A client authentication certificate
             - spp_certificate_key - Full path to the A2A client authentication private key
-            - spp_tls_cert(optional) - Full path to the TLS public certificate that is associated with the SPP appliance
+            - spp_ca_cert(optional) - Full path to a CA certificate bundle for TLS verification
+            - spp_validate_certs(optional) - Whether to validate TLS certificates (default true)
             - spp_credential_type(optional) - Credential type to retrieve. Must be 'password' or 'privatekey'
         required: True
         no_log: True
@@ -54,7 +55,7 @@ EXAMPLES = """
       spp_appliance: 192.168.0.1
       spp_certificate_file: /etc/ansible/certs/CN=a2ausercert.pem
       spp_certificate_key: /etc/ansible/certs/CN=a2ausercert.key
-      spp_tls_cert: /etc/ansible/certs/spptlscert.pem
+      spp_ca_cert: /etc/ansible/certs/spp-ca-bundle.pem
       spp_credential_type: password
   tasks:
     - name: Retrieve a credential by API key
@@ -77,15 +78,16 @@ _raw:
 """
 
 
-def _resolve_verify(tls_cert):
-    """Map the user-facing spp_tls_cert value to a PySafeguard verify parameter.
+def _resolve_verify(tls_cert, validate_certs=True):
+    """Map user-facing TLS options to a PySafeguard verify parameter.
 
-    :arg tls_cert: A file path (str), True, False, or None
-    :returns: True, False, or a CA bundle path string
+    :arg tls_cert: A CA bundle file path (str) or None/False
+    :arg validate_certs: Whether to validate TLS (bool, default True)
+    :returns: A CA bundle path, True (system CA), or False (no verification)
     """
     if isinstance(tls_cert, str) and tls_cert:
         return tls_cert
-    if tls_cert is True:
+    if validate_certs:
         return True
     return False
 
@@ -105,7 +107,8 @@ class LookupModule(LookupBase):
         appliance = a2aconnection.get('spp_appliance', None)
         cert = a2aconnection.get('spp_certificate_file', None)
         key = a2aconnection.get('spp_certificate_key', None)
-        tls_cert = a2aconnection.get('spp_tls_cert', False)
+        tls_cert = a2aconnection.get('spp_ca_cert', None)
+        validate_certs = a2aconnection.get('spp_validate_certs', True)
         credential_type = a2aconnection.get('spp_credential_type', A2AType.PASSWORD)
         if credential_type.lower() == A2AType.PASSWORD:
             credential_type = A2AType.PASSWORD
@@ -121,7 +124,7 @@ class LookupModule(LookupBase):
         if not key:
             raise AnsibleError('Missing client authentication key path.')
 
-        verify = _resolve_verify(tls_cert)
+        verify = _resolve_verify(tls_cert, validate_certs)
 
         try:
             display.vvvv("Connecting to '%s' via A2A with cert '%s'" % (appliance, cert))

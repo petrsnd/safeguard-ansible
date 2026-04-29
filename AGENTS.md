@@ -156,7 +156,7 @@ SPP_HOST=<appliance-ip> SPP_ADMIN_PASSWORD=<admin-pw> python3 -m pytest -v
 |----------------------|----------|-------------|
 | `SPP_HOST`           | Yes      | Appliance IP or hostname |
 | `SPP_ADMIN_PASSWORD` | No       | Bootstrap admin password (default: `Admin123`) |
-| `SPP_CA_FILE`        | No       | TLS CA bundle path (disables TLS verify if unset) |
+| `SPP_CA_FILE`        | No       | TLS CA bundle path (uses system CA store if unset) |
 
 All 18 tests skip automatically when `SPP_HOST` is not set.
 
@@ -228,10 +228,10 @@ Always use `PkceAuth` instead — it has an identical constructor signature.
 
 ### The `verify` parameter
 
-The `verify` parameter maps from the user-facing `spp_tls_cert` config:
-- String path → passed as `verify=path` (CA bundle for TLS verification)
-- `True` → passed as `verify=True` (use system CA store)
-- `False` / omitted → passed as `verify=False` (disable TLS verification)
+The `verify` parameter maps from the user-facing TLS options:
+- `spp_ca_cert` is a path → passed as `verify=path` (CA bundle for TLS verification)
+- `spp_validate_certs=True` (default) with no path → passed as `verify=True` (use system CA store)
+- `spp_validate_certs=False` → passed as `verify=False` (disable TLS verification)
 
 ## CI/CD
 

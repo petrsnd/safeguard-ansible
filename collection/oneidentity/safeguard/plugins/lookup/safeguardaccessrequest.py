@@ -74,17 +74,29 @@ DOCUMENTATION = """
         ini:
           - section: safeguard
             key: spp_credential_type
-      spp_tls_cert:
+      spp_ca_cert:
         description: >-
-          Full path to the TLS public certificate that is associated with the SPP appliance.
-          If not provided, TLS validation is disabled.
+          Full path to a CA certificate bundle for TLS verification of the SPP appliance.
+          When provided, overrides the system CA store.
         type: str
         required: False
         env:
-          - name: SPP_TLS_CERT
+          - name: SPP_CA_CERT
         ini:
           - section: safeguard
-            key: spp_tls_cert
+            key: spp_ca_cert
+      spp_validate_certs:
+        description: >-
+          Whether to validate TLS certificates when connecting to the SPP appliance.
+          Set to false only for testing with self-signed certificates.
+        type: bool
+        default: true
+        required: False
+        env:
+          - name: SPP_VALIDATE_CERTS
+        ini:
+          - section: safeguard
+            key: spp_validate_certs
     notes:
       - The safeguardaccessrequest lookup plugin requires OneIdentity PySafeguard module (>=8.0).
       - See https://github.com/OneIdentity/PySafeguard
@@ -142,11 +154,16 @@ CHECKOUT_ENDPOINTS = {
 }
 
 
-def _resolve_verify(tls_cert):
-    """Map the user-facing spp_tls_cert value to a PySafeguard verify parameter."""
+def _resolve_verify(tls_cert, validate_certs=True):
+    """Map user-facing TLS options to a PySafeguard verify parameter.
+
+    :arg tls_cert: A CA bundle file path (str) or None
+    :arg validate_certs: Whether to validate TLS (bool, default True)
+    :returns: A CA bundle path, True (system CA), or False (no verification)
+    """
     if isinstance(tls_cert, str) and tls_cert:
         return tls_cert
-    if tls_cert is True:
+    if validate_certs:
         return True
     return False
 
@@ -299,8 +316,9 @@ class LookupModule(LookupBase):
         username = self.get_option("spp_user")
         password = self.get_option("spp_password")
         credential_type = self.get_option("spp_credential_type") if self.has_option("spp_credential_type") else "password"
-        tls_cert = self.get_option("spp_tls_cert") if self.has_option("spp_tls_cert") else False
-        verify = _resolve_verify(tls_cert)
+        tls_cert = self.get_option("spp_ca_cert") if self.has_option("spp_ca_cert") else None
+        validate_certs = self.get_option("spp_validate_certs") if self.has_option("spp_validate_certs") else True
+        verify = _resolve_verify(tls_cert, validate_certs)
 
         if credential_type not in REQUEST_TYPES:
             raise AnsibleError("Invalid spp_credential_type '%s'. Must be one of: %s"

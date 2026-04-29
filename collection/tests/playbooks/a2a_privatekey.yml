@@ -16,6 +16,7 @@
           spp_certificate_file: "{{ a2a_cert_file }}"
           spp_certificate_key: "{{ a2a_cert_key }}"
           spp_credential_type: privatekey
+          spp_validate_certs: "{{ spp_validate_certs | default(true) }}"
 
     - name: Verify SSH key
       ansible.builtin.assert:
