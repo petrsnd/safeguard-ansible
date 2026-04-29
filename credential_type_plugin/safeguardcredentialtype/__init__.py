@@ -78,6 +78,7 @@ spp_plugin = CredentialPlugin(
             'id': 'spp_api_key',
             'label': 'Safeguard Credential API key',
             'type': 'string',
+            'secret': True,
         }, {
             'id': 'spp_appliance',
             'label': 'Safeguard Appliance IP or Host name',
@@ -90,6 +91,7 @@ spp_plugin = CredentialPlugin(
             'id': 'spp_key_path',
             'label': 'Safeguard client key file path',
             'type': 'string',
+            'help_text': 'Full path to the client authentication private key (PEM). Ensure the private key is stored securely and readable only by Ansible.',
         }, {
             'id': 'spp_tls_path',
             'label': 'Safeguard TLS certificate file path',
@@ -98,7 +100,8 @@ spp_plugin = CredentialPlugin(
             'id': 'spp_credential_type',
             'label': 'Safeguard credential type to retrieve',
             'type': 'string',
-            'choices': ['password', 'privatekey']
+            'choices': ['password', 'privatekey'],
+            'default': 'password',
         }],
         'metadata': [],
         'required': ['spp_api_key', 'spp_appliance', 'spp_certificate_path', 'spp_key_path'],

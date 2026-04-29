@@ -17,7 +17,7 @@ To fetch a credential from SPP, an A2A registration must have been created in SP
 
 ## Installation
 
-The installation of the Safeguard Credential Type plugin must be done on the server that is running the Ansible Automation Platform web interface. The plugin is available from the PyPI repository at <https://pypi.org/project/safeguardcredentialtype/> and can be install by running the following commands:
+The installation of the Safeguard Credential Type plugin must be done on the server that is running the Ansible Automation Platform web interface. The plugin can be installed by running the following commands:
 
 ```text
 > sudo awx-python -m pip install safeguardcredentialtype
