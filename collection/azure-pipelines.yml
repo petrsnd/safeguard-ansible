@@ -81,7 +81,7 @@ jobs:
     displayName: 'Get Ansible Galaxy API key'
     condition: and(succeeded(), eq(variables.isCollectionTag, 'True'))
     inputs:
-      azureSubscription: 'OneIdentity.RD.SBox.Safeguard-ServiceConnection'
+      azureSubscription: 'SafeguardOpenSource'
       KeyVaultName: 'SafeguardBuildSecrets'
       SecretsFilter: 'AnsibleGalaxyApiKey1'
 
