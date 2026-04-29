@@ -130,7 +130,7 @@ class LookupModule(LookupBase):
             display.vvvv("Connecting to '%s' via A2A with cert '%s'" % (appliance, cert))
             with A2AContext(appliance, cert, key, verify=verify) as a2a:
                 for term in terms:
-                    display.vvvv("Retrieving %s credential for API key '%s...'" % (credential_type, term[:8]))
+                    display.vvvv("Retrieving %s credential for API key [%d]" % (credential_type, terms.index(term) + 1))
                     if credential_type == A2AType.PRIVATEKEY:
                         credential = a2a.retrieve_private_key(term)
                     else:
