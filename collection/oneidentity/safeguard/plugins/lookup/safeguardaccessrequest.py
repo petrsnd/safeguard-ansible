@@ -318,9 +318,9 @@ class LookupModule(LookupBase):
         provider = self.get_option("spp_provider")
         username = self.get_option("spp_user")
         password = self.get_option("spp_password")
-        credential_type = self.get_option("spp_credential_type") if self.has_option("spp_credential_type") else "password"
-        tls_cert = self.get_option("spp_ca_cert") if self.has_option("spp_ca_cert") else None
-        validate_certs = self.get_option("spp_validate_certs") if self.has_option("spp_validate_certs") else True
+        credential_type = self.get_option("spp_credential_type")
+        tls_cert = self.get_option("spp_ca_cert")
+        validate_certs = self.get_option("spp_validate_certs")
         verify = _resolve_verify(tls_cert, validate_certs)
 
         if credential_type not in REQUEST_TYPES:
