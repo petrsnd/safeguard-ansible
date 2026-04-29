@@ -293,7 +293,7 @@ def _create_or_reuse_request(client, account_id, asset_id, asset_name, credentia
         except Exception:
             error_code = None
 
-        if error_code == 90001:
+        if str(error_code) == "90001":
             display.vvvv("Access request already exists for '%s' (error code 90001)" % asset_name)
             request_id = _find_existing_request(client, account_id, asset_id,
                                                     REQUEST_TYPES[credential_type])
