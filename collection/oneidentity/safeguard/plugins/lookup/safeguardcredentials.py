@@ -5,6 +5,7 @@
 from ansible.errors import AnsibleError
 from ansible.module_utils._text import to_native
 from ansible.plugins.lookup import LookupBase
+from ansible.utils.display import Display
 
 from pysafeguard import A2AContext, A2AType
 
@@ -38,6 +39,10 @@ DOCUMENTATION = """
       - Each credential that is retrieved from Safeguard for Privileged Passwords will have an identifying API key.
       - The safeguardcredentials lookup plugin requires OneIdentity PySafeguard module (>=8.0).
       - See https://github.com/OneIdentity/PySafeguard
+    seealso:
+      - plugin: oneidentity.safeguardcollection.safeguardaccessrequest
+        plugin_type: lookup
+        description: Retrieve credentials via the Access Request workflow using username/password authentication.
 """
 
 EXAMPLES = """
@@ -77,6 +82,9 @@ def _resolve_verify(tls_cert):
     return False
 
 
+display = Display()
+
+
 class LookupModule(LookupBase):
 
     def run(self, terms, variables=None, **kwargs):
@@ -108,8 +116,10 @@ class LookupModule(LookupBase):
         verify = _resolve_verify(tls_cert)
 
         try:
+            display.vvvv("Connecting to '%s' via A2A with cert '%s'" % (appliance, cert))
             with A2AContext(appliance, cert, key, verify=verify) as a2a:
                 for term in terms:
+                    display.vvvv("Retrieving %s credential for API key '%s...'" % (credential_type, term[:8]))
                     if credential_type == A2AType.PRIVATEKEY:
                         credential = a2a.retrieve_private_key(term)
                     else:

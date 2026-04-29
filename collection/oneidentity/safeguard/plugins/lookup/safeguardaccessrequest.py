@@ -88,6 +88,10 @@ DOCUMENTATION = """
     notes:
       - The safeguardaccessrequest lookup plugin requires OneIdentity PySafeguard module (>=8.0).
       - See https://github.com/OneIdentity/PySafeguard
+    seealso:
+      - plugin: oneidentity.safeguardcollection.safeguardcredentials
+        plugin_type: lookup
+        description: Retrieve credentials via A2A registration using client certificate authentication.
 """
 
 EXAMPLES = """
