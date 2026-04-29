@@ -1,0 +1,3 @@
+ansible-core>=2.14
+pysafeguard>=8,<9
+pytest

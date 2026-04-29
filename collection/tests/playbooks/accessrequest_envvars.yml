@@ -1,0 +1,19 @@
+- name: Test access request using environment variables
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Retrieve password using env var configuration
+      ansible.builtin.set_fact:
+        credential: >-
+          {{ lookup('oneidentity.safeguardcollection.safeguardaccessrequest',
+             asset_name, account_name) }}
+      no_log: true
+
+    - name: Verify credential
+      ansible.builtin.assert:
+        that:
+          - credential is defined
+          - credential is string
+          - credential | length > 0
+        fail_msg: "Access request via env vars failed"

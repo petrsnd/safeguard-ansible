@@ -1,0 +1,27 @@
+- name: Test A2A multi-key retrieval
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Retrieve credentials for two API keys in one lookup
+      ansible.builtin.set_fact:
+        credentials: >-
+          {{ query('oneidentity.safeguardcollection.safeguardcredentials',
+             lookup('env', 'SGANS_A2A_API_KEY_1'),
+             lookup('env', 'SGANS_A2A_API_KEY_2'),
+             a2aconnection=a2aconnection) }}
+      no_log: true
+      vars:
+        a2aconnection:
+          spp_appliance: "{{ spp_host }}"
+          spp_certificate_file: "{{ a2a_cert_file }}"
+          spp_certificate_key: "{{ a2a_cert_key }}"
+
+    - name: Verify two credentials returned
+      ansible.builtin.assert:
+        that:
+          - credentials is sequence
+          - credentials | length == 2
+          - credentials[0] | length > 0
+          - credentials[1] | length > 0
+        fail_msg: "Expected 2 credentials, got {{ credentials | length }}"

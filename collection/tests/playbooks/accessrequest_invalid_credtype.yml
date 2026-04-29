@@ -1,0 +1,15 @@
+- name: Test access request with invalid credential type (should fail)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Attempt retrieval with bogus credential type
+      ansible.builtin.set_fact:
+        credential: >-
+          {{ lookup('oneidentity.safeguardcollection.safeguardaccessrequest',
+             asset_name, account_name,
+             spp_appliance=spp_appliance,
+             spp_provider=spp_provider,
+             spp_user=spp_user,
+             spp_password=lookup('env', 'SGANS_SPP_PASSWORD'),
+             spp_credential_type='bogus') }}
