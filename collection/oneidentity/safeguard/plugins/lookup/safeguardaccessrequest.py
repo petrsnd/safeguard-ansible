@@ -32,19 +32,36 @@ DOCUMENTATION = """
         description: Safeguard for Privileged Passwords appliance IP address or host name
         type: str
         required: True
+        env:
+          - name: SPP_APPLIANCE
+        ini:
+          - section: safeguard
+            key: spp_appliance
       spp_provider:
         description: Authentication provider name (e.g. 'local', your AD/LDAP provider name)
         type: str
         required: True
+        env:
+          - name: SPP_PROVIDER
+        ini:
+          - section: safeguard
+            key: spp_provider
       spp_user:
         description: Authentication user name
         type: str
         required: True
+        env:
+          - name: SPP_USER
+        ini:
+          - section: safeguard
+            key: spp_user
       spp_password:
         description: Authentication password
         type: str
         required: True
         no_log: True
+        env:
+          - name: SPP_PASSWORD
       spp_credential_type:
         description: >-
           Type of credential to retrieve.
@@ -52,12 +69,22 @@ DOCUMENTATION = """
         choices: ['password', 'privatekey']
         default: password
         required: False
+        env:
+          - name: SPP_CREDENTIAL_TYPE
+        ini:
+          - section: safeguard
+            key: spp_credential_type
       spp_tls_cert:
         description: >-
           Full path to the TLS public certificate that is associated with the SPP appliance.
           If not provided, TLS validation is disabled.
         type: str
         required: False
+        env:
+          - name: SPP_TLS_CERT
+        ini:
+          - section: safeguard
+            key: spp_tls_cert
     notes:
       - The safeguardaccessrequest lookup plugin requires OneIdentity PySafeguard module (>=8.0).
       - See https://github.com/OneIdentity/PySafeguard
