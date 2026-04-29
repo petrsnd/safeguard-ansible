@@ -53,7 +53,7 @@ if ($local:IsTagBuildBool) {
     # Dev builds get a prerelease suffix for unique artifact versioning.
     # Collection uses SemVer format (required by Ansible Galaxy).
     # Credential plugin uses PEP 440 format (required by PyPI).
-    $local:BuildNumber = [int]$BuildId % 65534
+    $local:BuildNumber = [int]$BuildId
     if ($Component -eq "collection") {
         $local:PackageVersion = "${local:SemanticVersion}-dev.${local:BuildNumber}"
     } else {
