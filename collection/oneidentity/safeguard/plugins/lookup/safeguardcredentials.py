@@ -49,7 +49,7 @@ EXAMPLES = """
       spp_credential_type: password
   name: retrieve a credential
     ansible.builtin.set_fact:
-      password: "{{ lookup('safeguardcredentials', spp_credential_apikey, a2aconnection) }}"
+      password: "{{ lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2aconnection) }}"
 
 """
 
@@ -77,7 +77,7 @@ def _resolve_verify(tls_cert):
 
 class LookupModule(LookupBase):
 
-    def run(self, terms, variables, **kwargs):
+    def run(self, terms, variables=None, **kwargs):
         ret = []
 
         self.set_options(var_options=variables, direct=kwargs)

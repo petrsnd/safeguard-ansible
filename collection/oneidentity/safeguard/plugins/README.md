@@ -83,6 +83,35 @@ Parameters:
   * **spp_tls_cert** (optional) - The full path to the TLS public certificate that is associated with the SPP appliance. If this certificate path is not provided, the lookup plugin will disable TLS validation which may produce a warning.
   * **spp_credential_type** (optional) - The type of credential that should be retrieved from SPP. Must be **password** (default) or **privatekey**.
 
+## Safeguard Access Request lookup plugin
+
+The Safeguard Access Request lookup plugin allows Ansible to retrieve credentials (passwords or SSH keys) from SPP using username/password authentication and the Access Request workflow. This requires that the authenticated user has entitlements to request credentials for the target asset.
+
+### Configuration
+
+The Safeguard Access Request lookup plugin takes the asset name as a term and connection options as keyword arguments.
+
+```yaml
+vars:
+  spp_appliance: 192.168.1.234
+  spp_provider: local
+  spp_user: myuser
+  spp_password: mysecret
+  asset_password: "{{lookup('oneidentity.safeguardcollection.safeguardaccessrequest', 'myasset', spp_appliance=spp_appliance, spp_provider=spp_provider, spp_user=spp_user, spp_password=spp_password)}}"
+  asset_sshkey: "{{lookup('oneidentity.safeguardcollection.safeguardaccessrequest', 'myasset', 'root', spp_appliance=spp_appliance, spp_provider=spp_provider, spp_user=spp_user, spp_password=spp_password, spp_credential_type='privatekey')}}"
+```
+
+Parameters:
+
+* **asset name** (first term, required) - The name or IP address of the asset to retrieve the credential for.
+* **account name** (second term, optional) - Account name on the asset (e.g. `root`). Required when the asset has multiple accounts with entitlements.
+* **spp_appliance** - The IP address or host name of the SPP appliance.
+* **spp_provider** - The authentication provider name (e.g. `local`, or your AD/LDAP provider name).
+* **spp_user** - The authentication user name.
+* **spp_password** - The authentication password.
+* **spp_credential_type** (optional) - Type of credential to retrieve: `password` (default) or `privatekey`.
+* **spp_tls_cert** (optional) - The full path to the TLS public certificate for the SPP appliance. If not provided, TLS validation is disabled.
+
 ## Examples
 
 Inventory file:

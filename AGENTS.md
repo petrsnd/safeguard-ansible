@@ -28,7 +28,8 @@ safeguard-ansible/
 │       └── plugins/
 │           ├── README.md                # Plugin usage documentation with examples
 │           └── lookup/
-│               └── safeguardcredentials.py  # Lookup plugin — retrieves A2A credentials
+│               ├── safeguardaccessrequest.py # Lookup plugin — retrieves credentials via Access Requests
+│               └── safeguardcredentials.py   # Lookup plugin — retrieves A2A credentials
 │
 └── credential_type_plugin/              # AWX/AAP credential type plugin
     ├── azure-pipelines.yml              # CI/CD: build & publish to PyPI
