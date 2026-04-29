@@ -10,7 +10,7 @@ from ansible.module_utils._text import to_native
 from ansible.plugins.lookup import LookupBase
 from ansible.utils.display import Display
 
-from pysafeguard import SafeguardClient, PasswordAuth, Service
+from pysafeguard import SafeguardClient, PkceAuth, Service
 
 DOCUMENTATION = """
     name: safeguardaccessrequest
@@ -318,7 +318,7 @@ class LookupModule(LookupBase):
         try:
             with SafeguardClient(
                 appliance,
-                auth=PasswordAuth(provider, username, password),
+                auth=PkceAuth(provider, username, password),
                 verify=verify,
             ) as client:
                 client.login()
