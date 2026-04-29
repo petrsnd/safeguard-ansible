@@ -240,7 +240,7 @@ def _find_existing_request(client, account_id, asset_id, access_request_type):
         if (req.get("AccountId") == account_id
                 and req.get("AssetId") == asset_id
                 and req.get("AccessRequestType") == access_request_type
-                and not req.get("WasExpired", True)
+                and not req.get("WasExpired", False)
                 and req.get("State") in active_states):
             return req["Id"]
 
