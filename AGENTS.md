@@ -13,13 +13,13 @@ safeguard-ansible/
 ├── AGENTS.md
 ├── README.md
 ├── LICENSE
-├── azure-pipelines.yml                  # Unified CI/CD pipeline
 ├── versionnumber.ps1                    # Version stamping script (dual-component)
 ├── pipeline-templates/                  # Shared pipeline step templates
 │   ├── global-variables.yml             # isTagBuild, isCollectionTag, isCredPluginTag
 │   ├── build-collection-steps.yml       # Collection build steps
 │   └── build-credplugin-steps.yml       # Credential plugin build steps
 ├── collection/                          # Ansible Galaxy collection
+│   ├── azure-pipelines.yml              # Collection CI/CD pipeline
 │   ├── tests/                           # Automated integration test suite
 │   │   ├── pytest.ini                   # Pytest config & markers
 │   │   ├── requirements.txt             # Test dependencies
@@ -65,6 +65,7 @@ safeguard-ansible/
 │               └── safeguardaccessrequest.py # Lookup plugin — Access Request credential retrieval
 │
 └── credential_type_plugin/              # AWX/AAP credential type plugin
+    ├── azure-pipelines.yml              # Credential plugin CI/CD pipeline
     ├── pyproject.toml                   # PyPI packaging (safeguardcredentialtype)
     ├── README.md                        # Installation & configuration docs
     ├── Images/                          # Screenshots for docs
@@ -252,16 +253,20 @@ The `verify` parameter maps from the user-facing TLS options:
 
 ## CI/CD
 
-The repository uses a single Azure Pipeline (`azure-pipelines.yml`) at the repo
-root, modeled after PySafeguard's release semantics.
+The repository uses two separate Azure Pipelines (one per component), modeled
+after PySafeguard's release semantics. Each pipeline only triggers when its
+own component's files change.
 
 ### Pipeline structure
 
 ```
-azure-pipelines.yml
-├── PRValidation          # Builds both components, no publishing
-├── BuildCollection       # Builds + publishes collection (skipped on credplugin tags)
-└── BuildCredPlugin       # Builds + publishes credential plugin (skipped on collection tags)
+collection/azure-pipelines.yml
+├── PRValidation          # Builds collection, no publishing
+└── BuildCollection       # Builds + publishes collection to Galaxy
+
+credential_type_plugin/azure-pipelines.yml
+├── PRValidation          # Builds credential plugin, no publishing
+└── BuildCredPlugin       # Builds + publishes credential plugin to PyPI
 ```
 
 Shared build logic lives in `pipeline-templates/`:

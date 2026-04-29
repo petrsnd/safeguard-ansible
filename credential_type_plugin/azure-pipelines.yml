@@ -1,0 +1,90 @@
+# Build Safeguard Ansible Credential Type Plugin
+
+variables:
+  - template: ../pipeline-templates/global-variables.yml
+
+trigger:
+  branches:
+    include:
+    - main
+    - release-*
+  tags:
+    include:
+    - 'credplugin-v*'
+  paths:
+    include:
+    - credential_type_plugin/
+    - pipeline-templates/
+    exclude:
+    - README.md
+    - AGENTS.md
+
+pr:
+  branches:
+    include:
+    - main
+    - release-*
+  paths:
+    include:
+    - credential_type_plugin/
+    - pipeline-templates/
+    exclude:
+    - README.md
+    - AGENTS.md
+
+jobs:
+# -------------------------------------------------------------------
+# PR Validation — build only, no publishing
+# -------------------------------------------------------------------
+- job: PRValidation
+  displayName: 'PR Validation - Credential Plugin'
+  condition: eq(variables['Build.Reason'], 'PullRequest')
+
+  pool:
+    vmImage: ubuntu-latest
+
+  steps:
+  - template: ../pipeline-templates/build-credplugin-steps.yml
+
+# -------------------------------------------------------------------
+# Build and publish credential type plugin
+# -------------------------------------------------------------------
+- job: BuildCredPlugin
+  displayName: 'Build and publish credential type plugin'
+  condition: ne(variables['Build.Reason'], 'PullRequest')
+
+  pool:
+    vmImage: ubuntu-latest
+
+  steps:
+  - template: ../pipeline-templates/build-credplugin-steps.yml
+
+  # GitHub release — prerelease for dev builds, full release for tag builds
+  - task: GitHubRelease@1
+    displayName: 'Publish credential plugin GitHub release'
+    inputs:
+      gitHubConnection: 'PangaeaBuild-GitHub'
+      repositoryName: 'OneIdentity/safeguard-ansible'
+      action: 'create'
+      target: '$(Build.SourceVersion)'
+      tagSource: 'userSpecifiedTag'
+      tag: '$(ReleaseTag)'
+      title: 'Safeguard Credential Type $(PackageVersion)'
+      isPreRelease: ${{ not(startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
+      changeLogCompareToRelease: 'lastFullRelease'
+      changeLogType: 'commitBased'
+      addChangeLog: true
+      assets: $(Build.ArtifactStagingDirectory)/credplugin/*
+
+  # PyPI publish — only for tag builds (official releases)
+  - task: TwineAuthenticate@1
+    displayName: 'Twine Authenticate'
+    condition: and(succeeded(), eq(variables.isCredPluginTag, 'True'))
+    inputs:
+      pythonUploadServiceConnection: pypiOneIdentity
+
+  - script: |
+      python3 -m pip install --upgrade twine
+      twine upload --verbose --config-file $(PYPIRC_PATH) $(Build.ArtifactStagingDirectory)/credplugin/*
+    displayName: 'Upload to PyPI'
+    condition: and(succeeded(), eq(variables.isCredPluginTag, 'True'))
