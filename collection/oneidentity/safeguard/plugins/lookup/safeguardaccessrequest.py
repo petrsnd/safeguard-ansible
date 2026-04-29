@@ -14,7 +14,7 @@ from pysafeguard import SafeguardClient, PkceAuth, Service
 
 DOCUMENTATION = """
     name: safeguardaccessrequest
-    version_added: "1.0"
+    version_added: "2.0"
     author:
       - Adrian Lopez (Datadope) <adrian.lopez@datadope.io>
     short_description: retrieve credentials from Safeguard for Privileged Passwords via Access Requests
@@ -97,9 +97,25 @@ DOCUMENTATION = """
         ini:
           - section: safeguard
             key: spp_validate_certs
+      spp_checkout_timeout:
+        description: >-
+          Maximum time in seconds to wait for a credential checkout to succeed.
+          The plugin retries with exponential backoff until this timeout is reached.
+          Increase this value if your access policies require approval workflows.
+        type: int
+        default: 90
+        required: False
+        env:
+          - name: SPP_CHECKOUT_TIMEOUT
+        ini:
+          - section: safeguard
+            key: spp_checkout_timeout
     notes:
       - The safeguardaccessrequest lookup plugin requires OneIdentity PySafeguard module (>=8.0).
       - See https://github.com/OneIdentity/PySafeguard
+      - This plugin assumes access policies are configured for auto-approval by default. If
+        approval is required, increase spp_checkout_timeout to allow time for the approval
+        workflow to complete before checkout is attempted.
     seealso:
       - plugin: oneidentity.safeguardcollection.safeguardcredentials
         plugin_type: lookup
@@ -139,9 +155,8 @@ _raw:
 
 display = Display()
 
-CHECKOUT_MAX_RETRIES = 4
-CHECKOUT_RETRY_BASE_SECONDS = 3
-CHECKOUT_RETRY_MAX_SECONDS = 30
+CHECKOUT_RETRY_INTERVAL_SECONDS = 5
+CHECKOUT_DEFAULT_TIMEOUT = 90
 
 REQUEST_TYPES = {
     "password": "Password",
@@ -290,23 +305,27 @@ def _create_or_reuse_request(client, account_id, asset_id, asset_name, credentia
     )
 
 
-def _checkout_with_retry(client, request_id, credential_type):
-    """Check out the credential, retrying on transient failures.
+def _checkout_with_retry(client, request_id, credential_type, timeout=CHECKOUT_DEFAULT_TIMEOUT):
+    """Check out the credential, retrying at a fixed interval until timeout.
 
+    :arg timeout: Maximum seconds to keep retrying (default 90)
     :returns: The checked-out credential
     """
     endpoint = CHECKOUT_ENDPOINTS[credential_type] % request_id
     last_error = None
-    for attempt in range(CHECKOUT_MAX_RETRIES):
+    attempt = 0
+    deadline = time.time() + timeout
+    while True:
         resp = client.post(Service.CORE, endpoint)
         if resp.status_code == 200:
             return resp.json()
 
         last_error = 'Error checking out credential: %s - %s' % (resp.status_code, resp.text)
-        if attempt < CHECKOUT_MAX_RETRIES - 1:
-            wait = min(CHECKOUT_RETRY_BASE_SECONDS * (2 ** attempt), CHECKOUT_RETRY_MAX_SECONDS)
-            display.vvvv("Checkout attempt %d failed, retrying in %ds..." % (attempt + 1, wait))
-            time.sleep(wait)
+        if time.time() + CHECKOUT_RETRY_INTERVAL_SECONDS >= deadline:
+            break
+        display.vvvv("Checkout attempt %d failed, retrying in %ds..." % (attempt + 1, CHECKOUT_RETRY_INTERVAL_SECONDS))
+        time.sleep(CHECKOUT_RETRY_INTERVAL_SECONDS)
+        attempt += 1
 
     raise AnsibleError(last_error)
 
@@ -325,6 +344,7 @@ class LookupModule(LookupBase):
         credential_type = self.get_option("spp_credential_type")
         tls_cert = self.get_option("spp_ca_cert")
         validate_certs = self.get_option("spp_validate_certs")
+        checkout_timeout = self.get_option("spp_checkout_timeout")
         verify = _resolve_verify(tls_cert, validate_certs)
 
         if credential_type not in REQUEST_TYPES:
@@ -366,7 +386,8 @@ class LookupModule(LookupBase):
                     client, entitlement["AccountId"], entitlement["AssetId"],
                     asset_name, credential_type
                 )
-                credential = _checkout_with_retry(client, request_id, credential_type)
+                credential = _checkout_with_retry(client, request_id, credential_type,
+                                                 timeout=checkout_timeout)
                 if credential_type == "privatekey" and isinstance(credential, dict):
                     credential = credential.get("PrivateKey", credential)
                 ret.append(credential)
