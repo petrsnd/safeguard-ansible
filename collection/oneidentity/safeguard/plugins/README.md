@@ -185,3 +185,135 @@ Playbook file:
         my_password: "{{lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2apasswordconnectioninfo)}}"
         my_privatekey: "{{lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2aprivatekeyconnectioninfo)}}"
 ```
+
+> **Tip:** To use a retrieved SSH key for host authentication, see the
+> [Using Retrieved SSH Keys for Host Authentication](#using-retrieved-ssh-keys-for-host-authentication) section below.
+
+## Using Retrieved SSH Keys for Host Authentication
+
+The lookup plugins return SSH private keys as strings. However, Ansible's SSH connection layer only accepts a **file path** via `ansible_ssh_private_key_file` — there is no variable for inline key content. This means you cannot use an SSH key lookup directly in inventory the way you can with `ansible_password`.
+
+The recommended pattern is a multi-play playbook that:
+
+1. Retrieves the key and writes it to a temporary file on the **Ansible control node**
+2. Connects to managed hosts using that file
+3. Cleans up the temporary file
+
+### Example using the A2A plugin
+
+```yaml
+- name: Retrieve SSH key from SPP (runs on the Ansible control node)
+  hosts: localhost
+  gather_facts: false
+  vars:
+    spp_credential_apikey: +IWSU/0msm98hUUUen5xOnYZZytVN2o9hLFxVr9S80Q=
+    a2aconnection:
+      spp_appliance: 192.168.1.234
+      spp_certificate_file: /etc/ansible/spp/a2ausercert.pem
+      spp_certificate_key: /etc/ansible/spp/a2ausercert.key
+      spp_ca_cert: /etc/ansible/spp/spp-ca-bundle.pem
+      spp_credential_type: privatekey
+  tasks:
+    - name: Create temporary key file
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .key
+      register: keyfile
+
+    - name: Write SSH key to temp file
+      ansible.builtin.copy:
+        content: "{{ lookup('oneidentity.safeguardcollection.safeguardcredentials', spp_credential_apikey, a2aconnection=a2aconnection) }}"
+        dest: "{{ keyfile.path }}"
+        mode: '0600'
+      no_log: true
+
+    - name: Store key path for subsequent plays
+      ansible.builtin.set_fact:
+        spp_key_file: "{{ keyfile.path }}"
+
+- name: Configure servers using SPP-managed SSH key
+  hosts: linuxservers
+  vars:
+    ansible_user: serviceadmin
+    ansible_ssh_private_key_file: "{{ hostvars['localhost']['spp_key_file'] }}"
+  tasks:
+    - name: Verify connectivity
+      ansible.builtin.ping:
+
+- name: Clean up temporary key file
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Remove temporary key file
+      ansible.builtin.file:
+        path: "{{ spp_key_file }}"
+        state: absent
+      when: spp_key_file is defined
+```
+
+### Example using the Access Request plugin
+
+```yaml
+- name: Retrieve SSH key via Access Request (runs on the Ansible control node)
+  hosts: localhost
+  gather_facts: false
+  vars:
+    spp_appliance: 192.168.1.234
+    spp_provider: local
+    spp_user: myuser
+    spp_password: mysecret
+  tasks:
+    - name: Create temporary key file
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .key
+      register: keyfile
+
+    - name: Write SSH key to temp file
+      ansible.builtin.copy:
+        content: "{{ lookup('oneidentity.safeguardcollection.safeguardaccessrequest', 'myasset', 'root', spp_appliance=spp_appliance, spp_provider=spp_provider, spp_user=spp_user, spp_password=spp_password, spp_credential_type='privatekey') }}"
+        dest: "{{ keyfile.path }}"
+        mode: '0600'
+      no_log: true
+
+    - name: Store key path for subsequent plays
+      ansible.builtin.set_fact:
+        spp_key_file: "{{ keyfile.path }}"
+
+- name: Configure servers using SPP-managed SSH key
+  hosts: linuxservers
+  vars:
+    ansible_user: root
+    ansible_ssh_private_key_file: "{{ hostvars['localhost']['spp_key_file'] }}"
+  tasks:
+    - name: Verify connectivity
+      ansible.builtin.ping:
+
+- name: Clean up temporary key file
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Remove temporary key file
+      ansible.builtin.file:
+        path: "{{ spp_key_file }}"
+        state: absent
+      when: spp_key_file is defined
+```
+
+### Security notes
+
+* The temporary key file is created with mode `0600` so only the Ansible user can read it.
+* The `copy` task uses `no_log: true` to prevent the key from appearing in Ansible output.
+* The raw key is never stored in an Ansible fact — the lookup is evaluated directly inside the `copy` task's `content` parameter. Only the file **path** is persisted as a fact.
+* Cleanup is best-effort: if the playbook run is interrupted before the final play executes, the temporary file will remain on disk. Consider additional safeguards (e.g., a cron job to purge stale key files) in security-sensitive environments.
+* The temporary file lives on the **Ansible control node** (or execution node in AWX/AAP). It is never transferred to managed hosts.
+
+### Why not use inventory-based lookup for SSH keys?
+
+For passwords, you can use a lookup directly in inventory (`ansible_password: "{{ lookup(...) }}"`). This works because Ansible passes passwords as strings to the SSH connection.
+
+SSH keys are different — Ansible requires a **file path** (`ansible_ssh_private_key_file`), not the key content. The file must already exist on the control node before the connection is established, which means a prior localhost play is needed to create it. This is why the multi-play pattern shown above is necessary.
+
+### Advanced alternative: ssh-agent
+
+If writing the key to disk is unacceptable, an advanced alternative is to load the key into a running `ssh-agent` process on the control node. This avoids persisting the key to a file but requires managing the agent lifecycle and ensuring `SSH_AUTH_SOCK` is propagated correctly. This approach is outside the scope of these examples.
