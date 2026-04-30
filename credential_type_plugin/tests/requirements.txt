@@ -1,0 +1,2 @@
+pysafeguard>=8,<9
+pytest

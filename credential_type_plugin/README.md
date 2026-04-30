@@ -25,3 +25,15 @@ The installation of the Safeguard Credential Type plugin must be done on the ser
 > sudo awx-manage setup_managed_credential_types
 > sudo automation-controller-service restart
 ```
+
+## Upgrading AWX / Ansible Automation Platform
+
+After upgrading AWX or Ansible Automation Platform, the Python virtual environment may be recreated. If this happens, the Safeguard Credential Type plugin and its dependencies must be reinstalled:
+
+```text
+> sudo awx-python -m pip install safeguardcredentialtype
+> sudo awx-manage setup_managed_credential_types
+> sudo automation-controller-service restart
+```
+
+If you see `KeyError: 'spp_plugin'` in the AWX logs after an upgrade, this indicates the plugin is not installed in the current Python environment. Running the commands above will resolve the issue.

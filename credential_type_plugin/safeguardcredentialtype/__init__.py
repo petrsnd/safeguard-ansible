@@ -4,8 +4,6 @@
 
 import collections
 
-from pysafeguard import A2AContext, A2AType
-
 CredentialPlugin = collections.namedtuple('CredentialPlugin', ['name', 'inputs', 'backend'])
 
 
@@ -34,6 +32,14 @@ def _get_spp_credential(**kwargs):
     :arg spp_credential_type: Credential type (password or privatekey)
     :returns: a text string containing the credential
     """
+    try:
+        from pysafeguard import A2AContext, A2AType
+    except ImportError as e:
+        raise ValueError(
+            'The pysafeguard package is not installed. '
+            'Install it with: pip install pysafeguard'
+        ) from e
+
     api_key = kwargs.get('spp_api_key', None)
     appliance = kwargs.get('spp_appliance', None)
     cert = kwargs.get('spp_certificate_path', None)
