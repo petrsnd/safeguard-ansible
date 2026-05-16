@@ -86,7 +86,6 @@ isCredPluginTag: startsWith(Build.SourceBranch, 'refs/tags/credplugin-v')
 
 - **Collection:** `collection/oneidentity/safeguard/galaxy.yml` → `version:` field
 - **Credential plugin:** `credential_type_plugin/pyproject.toml` → `version =` field
-- **Current version:** `2.0.0` (for both)
 
 ### `versionnumber.ps1`
 
